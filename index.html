@@ -86,6 +86,7 @@
           Upload: (props) => <SvgIcon {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></SvgIcon>,
           Save: (props) => <SvgIcon {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></SvgIcon>,
           FolderOpen: (props) => <SvgIcon {...props}><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v1"></path></SvgIcon>,
+          Download: (props) => <SvgIcon {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></SvgIcon>,
         };
 
         // --- Componente Principal ---
@@ -152,18 +153,14 @@
                 return () => unsubscribe();
             }, [isAuthReady, liveDocRef]);
 
-            const savePlan = async () => {
+            const savePlan = async (planToSave) => {
                 if (role !== 'coordinator') return;
-                const planName = prompt("Digite um nome para este plano:", currentPlan.name);
-                if (!planName) return;
-
-                const planToSave = { ...currentPlan, name: planName };
                 const planDocRef = firestore.doc(plansCollectionRef, planToSave.id);
                 
                 setIsSaving(true);
                 try {
                     await firestore.setDoc(planDocRef, planToSave);
-                    alert(`Plano "${planName}" salvo com sucesso!`);
+                    alert(`Plano "${planToSave.name}" salvo com sucesso!`);
                 } catch (error) {
                     console.error("Erro ao salvar plano:", error);
                 } finally {
@@ -256,6 +253,7 @@
             const [showLoadModal, setShowLoadModal] = useState(false);
 
             useEffect(() => {
+                if (!showLoadModal) return;
                 const fetchPlans = async () => {
                     if (!plansCollectionRef) return;
                     const querySnapshot = await window.firestore.getDocs(plansCollectionRef);
@@ -263,7 +261,7 @@
                     setSavedPlans(plans);
                 };
                 fetchPlans();
-            }, [plansCollectionRef]);
+            }, [showLoadModal, plansCollectionRef]);
             
             const handleCultInfoChange = (field, value) => {
                 setPlan(prev => ({...prev, cultInfo: {...prev.cultInfo, [field]: value}}));
@@ -285,6 +283,83 @@
                     cumulativeTime.setMinutes(cumulativeTime.getMinutes() + (Number(item.duration) || 0));
                     return { ...item, startTime: itemStartTime };
                 });
+            };
+
+            const handleSaveClick = () => {
+                const planName = prompt("Digite um nome para este plano:", plan.name);
+                if (planName) {
+                    onSave({ ...plan, name: planName });
+                }
+            };
+            
+            const handleDownloadTemplate = () => {
+                const headers = "Título;Duração;Tipo;Responsável;Descrição;Projeção;Som;Microfone;Iluminação;Câmera";
+                const exampleRow = "Música Ambiente;25;música;Projeção + Som;Logo ambiente antes do culto;Logo;Liberar som PC;-;Ambiente;-";
+                const csvContent = `${headers}\n${exampleRow}`;
+                const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", "modelo_culto.csv");
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            const handleFileImport = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const text = e.target.result;
+                    try {
+                        const rows = text.split('\n').filter(row => row.trim() !== '');
+                        const headers = rows.shift().split(';').map(h => h.trim().toLowerCase());
+                        
+                        const requiredHeaders = ['título', 'duração', 'tipo', 'responsável'];
+                        if (!requiredHeaders.every(h => headers.includes(h))) {
+                            alert('Arquivo CSV inválido. Certifique-se de que a planilha contém as colunas: Título, Duração, Tipo, Responsável, etc.');
+                            return;
+                        }
+
+                        const newItems = rows.map(row => {
+                            const values = row.split(';');
+                            const itemData = headers.reduce((obj, header, index) => {
+                                obj[header] = values[index] ? values[index].trim() : '';
+                                return obj;
+                            }, {});
+
+                            return {
+                                id: Date.now() + Math.random(),
+                                title: itemData['título'] || 'Sem Título',
+                                duration: parseInt(itemData['duração'], 10) || 5,
+                                type: itemData['tipo'] || 'palavra',
+                                responsible: itemData['responsável'] || '',
+                                description: itemData['descrição'] || '',
+                                technical: {
+                                    projection: itemData['projeção'] || '-',
+                                    sound: itemData['som'] || '-',
+                                    microphone: itemData['microfone'] || '-',
+                                    lighting: itemData['iluminação'] || '-',
+                                    camera: itemData['câmera'] || '-',
+                                },
+                                completed: false,
+                                actualDuration: null,
+                            };
+                        });
+                        
+                        if (confirm(`Foram encontrados ${newItems.length} itens. Deseja substituir a ordem de culto atual?`)) {
+                            handleItemsChange(calculateStartTimes(newItems, plan.cultInfo.startTime));
+                        }
+
+                    } catch (error) {
+                        alert('Ocorreu um erro ao processar o arquivo. Verifique o formato do CSV.');
+                        console.error("Erro ao importar CSV:", error);
+                    }
+                };
+                reader.readAsText(file, 'UTF-8');
             };
 
             const addItem = () => {
@@ -326,7 +401,7 @@
                         <h2 className="text-xl font-semibold">Informações do Culto: <span className="font-normal text-gray-600">{plan.name}</span></h2>
                         <div className="flex gap-2">
                             <button onClick={() => setShowLoadModal(true)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.FolderOpen size={16}/> Carregar</button>
-                            <button onClick={onSave} className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.Save size={16}/> Salvar</button>
+                            <button onClick={handleSaveClick} className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.Save size={16}/> Salvar</button>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -345,8 +420,11 @@
                       <div className="p-4 border-b flex justify-between items-center">
                         <h2 className="text-xl font-semibold">Ordem de Culto</h2>
                         <div className="flex gap-2">
+                           <input type="file" ref={fileInputRef} onChange={handleFileImport} className="hidden" accept=".csv"/>
+                           <button onClick={handleDownloadTemplate} className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.Download size={16}/> Modelo</button>
+                           <button onClick={() => fileInputRef.current.click()} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.Upload size={16}/> Importar</button>
                            <button onClick={addItem} className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.Plus size={16}/> Adicionar</button>
-                           <button onClick={onGoLive} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.Play size={16}/> Iniciar Culto</button>
+                           <button onClick={onGoLive} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm font-bold"><icons.Play size={16}/> INICIAR CULTO</button>
                         </div>
                       </div>
                       <div className="divide-y divide-gray-200">
