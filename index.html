@@ -22,7 +22,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // CORREÇÃO: Adicionado updateDoc para otimizar o timer
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         const firebaseConfig = {
             apiKey: "AIzaSyCYaOPtQdD1hU29awdgeN-rEGaoLGBGYBM",
@@ -43,7 +44,7 @@
             window.db = db;
             window.auth = auth;
             window.appId = appId;
-            window.firestore = { doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc };
+            window.firestore = { doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, updateDoc }; // Adicionado updateDoc
             window.firebaseAuth = { signInAnonymously, signInWithCustomToken };
         } catch (e) {
             console.error("Erro ao inicializar o Firebase: ", e);
@@ -260,7 +261,6 @@
                                 liveState={liveState}
                                 onStopLive={stopLive}
                                 role={role}
-                                liveDocRef={liveDocRef}
                             />
                         )}
                     </div>
@@ -538,30 +538,20 @@
         };
 
         const PresentationView = ({ liveState, onStopLive, role }) => {
-            const db = window.db;
-            const appId = window.appId;
-            const firestore = window.firestore;
-            const liveDocRef = db && firestore ? firestore.doc(db, "artifacts", appId, "public", "data", "worship-order", "live-state") : null;
-
-            const handleUpdateLiveState = (newLiveStateData) => {
-                if (role !== 'coordinator' || !liveDocRef) return;
-                window.firestore.setDoc(liveDocRef, { isLive: true, data: newLiveStateData });
-            };
+            const { updateDoc } = window.firestore;
+            const liveDocRef = window.db ? window.firestore.doc(window.db, "artifacts", window.appId, "public", "data", "worship-order", "live-state") : null;
 
             useEffect(() => {
                 let interval;
                 if (liveState.isLive && liveState.data?.liveState.isRunning && role === 'coordinator') {
                     interval = setInterval(() => {
-                        const currentData = liveState.data;
-                        const newLiveState = {
-                            ...currentData.liveState,
-                            currentTime: currentData.liveState.currentTime + 1
-                        };
-                        handleUpdateLiveState({ ...currentData, liveState: newLiveState });
+                        const newTime = (liveState.data.liveState.currentTime || 0) + 1;
+                        // Otimização: Atualiza apenas o campo do tempo
+                        if(liveDocRef) updateDoc(liveDocRef, { "data.liveState.currentTime": newTime });
                     }, 1000);
                 }
                 return () => clearInterval(interval);
-            }, [liveState.isLive, liveState.data?.liveState.isRunning, liveState.data?.liveState.currentTime, role]);
+            }, [liveState.isLive, liveState.data?.liveState.isRunning, role]);
 
             if (!liveState.isLive || !liveState.data) {
                 return (
@@ -606,16 +596,21 @@
                 return itemsBalance - initialDelayInMinutes;
             }, [items, currentItemIndex, actualStartTime, cultInfo.startTime]);
 
+            const handleLiveUpdate = (newLiveData) => {
+                if (role !== 'coordinator' || !liveDocRef) return;
+                window.firestore.setDoc(liveDocRef, { isLive: true, data: newLiveData });
+            };
+
             const handleToggleTimer = () => {
                 const newLiveState = { ...dataLiveState, isRunning: !isRunning };
                 if (!isRunning && currentItemIndex === 0 && !actualStartTime) {
                     newLiveState.actualStartTime = new Date().toISOString();
                 }
-                handleUpdateLiveState({ ...liveState.data, liveState: newLiveState });
+                handleLiveUpdate({ ...liveState.data, liveState: newLiveState });
             };
 
             const handleResetTimer = () => {
-                handleUpdateLiveState({ ...liveState.data, liveState: { ...dataLiveState, currentTime: 0 } });
+                handleLiveUpdate({ ...liveState.data, liveState: { ...dataLiveState, currentTime: 0 } });
             };
 
             const handleNext = () => {
@@ -623,7 +618,7 @@
                 const newItems = items.map((item, index) => 
                     index === currentItemIndex ? { ...item, completed: true, actualDuration: currentTime } : item
                 );
-                handleUpdateLiveState({ 
+                handleLiveUpdate({ 
                     ...liveState.data, 
                     items: newItems,
                     liveState: { ...dataLiveState, currentItemIndex: currentItemIndex + 1, currentTime: 0, isRunning: true }
@@ -632,7 +627,7 @@
 
             const handlePrevious = () => {
                 if (currentItemIndex <= 0) return;
-                handleUpdateLiveState({
+                handleLiveUpdate({
                     ...liveState.data,
                     liveState: { ...dataLiveState, currentItemIndex: currentItemIndex - 1, currentTime: 0 }
                 });
