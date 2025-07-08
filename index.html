@@ -22,7 +22,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, updateDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         const firebaseConfig = {
             apiKey: "AIzaSyCYaOPtQdD1hU29awdgeN-rEGaoLGBGYBM",
@@ -43,7 +43,7 @@
             window.db = db;
             window.auth = auth;
             window.appId = appId;
-            window.firestore = { doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, updateDoc, increment };
+            window.firestore = { doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, updateDoc, increment, serverTimestamp };
             window.firebaseAuth = { signInAnonymously, signInWithCustomToken };
         } catch (e) {
             console.error("Erro ao inicializar o Firebase: ", e);
@@ -207,6 +207,7 @@
                             isRunning: false,
                             currentTime: 0,
                             actualStartTime: null,
+                            lastSyncTimestamp: firestore.serverTimestamp() // Ponto de referência inicial
                         }
                     };
                     try {
@@ -543,18 +544,25 @@
         };
 
         const PresentationView = ({ liveState, onStopLive, role }) => {
-            const { updateDoc, increment } = window.firestore;
+            const [displayTime, setDisplayTime] = useState(0);
+            const { updateDoc, serverTimestamp } = window.firestore;
             const liveDocRef = window.db ? window.firestore.doc(window.db, "artifacts", window.appId, "public", "data", "worship-order", "live-state") : null;
 
             useEffect(() => {
                 let interval;
-                if (liveState.isLive && liveState.data?.liveState.isRunning && role === 'coordinator') {
+                if (liveState.isLive && liveState.data?.liveState.isRunning) {
+                    const savedTime = liveState.data.liveState.currentTime || 0;
+                    const lastSync = liveState.data.liveState.lastSyncTimestamp?.toDate().getTime() || Date.now();
+                    
                     interval = setInterval(() => {
-                        if(liveDocRef) updateDoc(liveDocRef, { "data.liveState.currentTime": increment(1) });
+                        const elapsedSeconds = Math.floor((Date.now() - lastSync) / 1000);
+                        setDisplayTime(savedTime + elapsedSeconds);
                     }, 1000);
+                } else if (liveState.isLive) {
+                    setDisplayTime(liveState.data.liveState.currentTime || 0);
                 }
                 return () => clearInterval(interval);
-            }, [liveState.isLive, liveState.data?.liveState.isRunning, role]);
+            }, [liveState.isLive, liveState.data?.liveState.isRunning, liveState.data?.liveState.currentTime, liveState.data?.liveState.lastSyncTimestamp]);
 
             if (!liveState.isLive || !liveState.data) {
                 return (
@@ -566,7 +574,7 @@
             }
 
             const { items, cultInfo, liveState: dataLiveState } = liveState.data;
-            const { currentItemIndex, isRunning, currentTime, actualStartTime } = dataLiveState;
+            const { currentItemIndex, isRunning, actualStartTime } = dataLiveState;
             const currentItem = items[currentItemIndex];
 
             const formatTime = (seconds) => {
@@ -577,8 +585,8 @@
             };
 
             const plannedDurationInSeconds = (currentItem?.duration || 0) * 60;
-            const isOvertime = currentTime > plannedDurationInSeconds;
-            const progressPercentage = plannedDurationInSeconds > 0 ? Math.min((currentTime / plannedDurationInSeconds) * 100, 100) : 0;
+            const isOvertime = displayTime > plannedDurationInSeconds;
+            const progressPercentage = plannedDurationInSeconds > 0 ? Math.min((displayTime / plannedDurationInSeconds) * 100, 100) : 0;
             
             const balance = useMemo(() => {
                 let initialDelayInMinutes = 0;
@@ -599,41 +607,44 @@
                 return itemsBalance - initialDelayInMinutes;
             }, [items, currentItemIndex, actualStartTime, cultInfo.startTime]);
 
-            const handleLiveUpdate = (newLiveData) => {
+            const handleLiveUpdate = (updates) => {
                 if (role !== 'coordinator' || !liveDocRef) return;
-                window.firestore.setDoc(liveDocRef, { isLive: true, data: newLiveData });
+                const payload = {};
+                for (const key in updates) {
+                    payload[`data.liveState.${key}`] = updates[key];
+                }
+                updateDoc(liveDocRef, payload);
             };
 
             const handleToggleTimer = () => {
-                const newLiveState = { ...dataLiveState, isRunning: !isRunning };
-                if (!isRunning && currentItemIndex === 0 && !actualStartTime) {
-                    newLiveState.actualStartTime = new Date().toISOString();
+                const newIsRunning = !isRunning;
+                const updates = { isRunning: newIsRunning, currentTime: displayTime, lastSyncTimestamp: serverTimestamp() };
+                if (newIsRunning && currentItemIndex === 0 && !actualStartTime) {
+                    updates.actualStartTime = new Date().toISOString();
                 }
-                handleLiveUpdate({ ...liveState.data, liveState: newLiveState });
+                handleLiveUpdate(updates);
             };
 
             const handleResetTimer = () => {
-                handleLiveUpdate({ ...liveState.data, liveState: { ...dataLiveState, currentTime: 0 } });
+                handleLiveUpdate({ currentTime: 0, lastSyncTimestamp: serverTimestamp() });
             };
 
             const handleNext = () => {
                 if (currentItemIndex >= items.length - 1) return;
                 const newItems = items.map((item, index) => 
-                    index === currentItemIndex ? { ...item, completed: true, actualDuration: currentTime } : item
+                    index === currentItemIndex ? { ...item, completed: true, actualDuration: displayTime } : item
                 );
-                handleLiveUpdate({ 
-                    ...liveState.data, 
+                const newLiveData = {
+                    ...liveState.data,
                     items: newItems,
-                    liveState: { ...dataLiveState, currentItemIndex: currentItemIndex + 1, currentTime: 0, isRunning: true }
-                });
+                    liveState: { ...dataLiveState, currentItemIndex: currentItemIndex + 1, currentTime: 0, isRunning: true, lastSyncTimestamp: serverTimestamp() }
+                };
+                window.firestore.setDoc(liveDocRef, { isLive: true, data: newLiveData });
             };
 
             const handlePrevious = () => {
                 if (currentItemIndex <= 0) return;
-                handleLiveUpdate({
-                    ...liveState.data,
-                    liveState: { ...dataLiveState, currentItemIndex: currentItemIndex - 1, currentTime: 0 }
-                });
+                handleLiveUpdate({ currentItemIndex: currentItemIndex - 1, currentTime: 0, lastSyncTimestamp: serverTimestamp() });
             };
             
             if (!currentItem) {
@@ -661,7 +672,7 @@
                             </div>
                         </div>
                         <div className="my-6 text-center">
-                            <div className={`text-7xl font-mono ${isOvertime ? 'text-red-400' : 'text-green-400'}`}>{formatTime(currentTime)}</div>
+                            <div className={`text-7xl font-mono ${isOvertime ? 'text-red-400' : 'text-green-400'}`}>{formatTime(displayTime)}</div>
                             <div className="text-gray-400">Planejado: {formatTime(plannedDurationInSeconds)}</div>
                         </div>
                         <div className="w-full bg-gray-700 rounded-full h-4 mb-6">
