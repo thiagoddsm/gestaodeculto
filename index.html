@@ -203,9 +203,9 @@
                         ...currentPlan,
                         liveState: {
                             currentItemIndex: 0,
-                            isRunning: true, // CORREÇÃO: Iniciar o culto com o timer já rodando
+                            isRunning: true,
                             currentTime: 0,
-                            actualStartTime: new Date().toISOString(), // Grava o início real
+                            actualStartTime: new Date().toISOString(),
                             lastSyncTimestamp: firestore.serverTimestamp()
                         }
                     };
@@ -551,12 +551,14 @@
                 let interval;
                 if (liveState.isLive && liveState.data?.liveState.isRunning) {
                     const savedTime = liveState.data.liveState.currentTime || 0;
-                    const lastSync = liveState.data.liveState.lastSyncTimestamp?.toDate().getTime() || Date.now();
+                    const lastSync = liveState.data.liveState.lastSyncTimestamp?.toDate().getTime();
                     
-                    interval = setInterval(() => {
-                        const elapsedSeconds = Math.floor((Date.now() - lastSync) / 1000);
-                        setDisplayTime(savedTime + elapsedSeconds);
-                    }, 250);
+                    if(lastSync) {
+                        interval = setInterval(() => {
+                            const elapsedSeconds = Math.floor((Date.now() - lastSync) / 1000);
+                            setDisplayTime(savedTime + elapsedSeconds);
+                        }, 250);
+                    }
                 } else if (liveState.isLive) {
                     setDisplayTime(liveState.data.liveState.currentTime || 0);
                 }
