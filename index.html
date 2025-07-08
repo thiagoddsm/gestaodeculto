@@ -558,6 +558,9 @@
                             const elapsedSeconds = Math.floor((Date.now() - lastSync) / 1000);
                             setDisplayTime(savedTime + elapsedSeconds);
                         }, 250);
+                    } else {
+                        // Se lastSync não estiver pronto, use o tempo local como fallback
+                        setDisplayTime(savedTime);
                     }
                 } else if (liveState.isLive) {
                     setDisplayTime(liveState.data.liveState.currentTime || 0);
