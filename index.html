@@ -22,7 +22,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // Adicionado 'increment' para otimização do timer
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         const firebaseConfig = {
             apiKey: "AIzaSyCYaOPtQdD1hU29awdgeN-rEGaoLGBGYBM",
@@ -43,7 +44,7 @@
             window.db = db;
             window.auth = auth;
             window.appId = appId;
-            window.firestore = { doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, updateDoc };
+            window.firestore = { doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, updateDoc, increment };
             window.firebaseAuth = { signInAnonymously, signInWithCustomToken };
         } catch (e) {
             console.error("Erro ao inicializar o Firebase: ", e);
@@ -543,19 +544,18 @@
         };
 
         const PresentationView = ({ liveState, onStopLive, role }) => {
-            const { updateDoc } = window.firestore;
+            const { updateDoc, increment } = window.firestore;
             const liveDocRef = window.db ? window.firestore.doc(window.db, "artifacts", window.appId, "public", "data", "worship-order", "live-state") : null;
 
             useEffect(() => {
                 let interval;
                 if (liveState.isLive && liveState.data?.liveState.isRunning && role === 'coordinator') {
                     interval = setInterval(() => {
-                        const newTime = (liveState.data.liveState.currentTime || 0) + 1;
-                        if(liveDocRef) updateDoc(liveDocRef, { "data.liveState.currentTime": newTime });
+                        if(liveDocRef) updateDoc(liveDocRef, { "data.liveState.currentTime": increment(1) });
                     }, 1000);
                 }
                 return () => clearInterval(interval);
-            }, [liveState.isLive, liveState.data?.liveState.isRunning, liveState.data?.liveState.currentTime, role]);
+            }, [liveState.isLive, liveState.data?.liveState.isRunning, role]);
 
             if (!liveState.isLive || !liveState.data) {
                 return (
