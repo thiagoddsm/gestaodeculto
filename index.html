@@ -551,17 +551,12 @@
                 let interval;
                 if (liveState.isLive && liveState.data?.liveState.isRunning) {
                     const savedTime = liveState.data.liveState.currentTime || 0;
-                    const lastSync = liveState.data.liveState.lastSyncTimestamp?.toDate().getTime();
+                    const lastSync = liveState.data.liveState.lastSyncTimestamp?.toDate()?.getTime() || Date.now();
                     
-                    if(lastSync) {
-                        interval = setInterval(() => {
-                            const elapsedSeconds = Math.floor((Date.now() - lastSync) / 1000);
-                            setDisplayTime(savedTime + elapsedSeconds);
-                        }, 250);
-                    } else {
-                        // Se lastSync não estiver pronto, use o tempo local como fallback
-                        setDisplayTime(savedTime);
-                    }
+                    interval = setInterval(() => {
+                        const elapsedSeconds = Math.floor((Date.now() - lastSync) / 1000);
+                        setDisplayTime(savedTime + elapsedSeconds);
+                    }, 250);
                 } else if (liveState.isLive) {
                     setDisplayTime(liveState.data.liveState.currentTime || 0);
                 }
