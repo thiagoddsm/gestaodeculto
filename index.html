@@ -22,7 +22,6 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        // CORREÇÃO: Adicionado updateDoc para otimizar o timer
         import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         const firebaseConfig = {
@@ -44,7 +43,7 @@
             window.db = db;
             window.auth = auth;
             window.appId = appId;
-            window.firestore = { doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, updateDoc }; // Adicionado updateDoc
+            window.firestore = { doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, updateDoc };
             window.firebaseAuth = { signInAnonymously, signInWithCustomToken };
         } catch (e) {
             console.error("Erro ao inicializar o Firebase: ", e);
@@ -146,16 +145,22 @@
 
                 const { auth, firebaseAuth } = window;
                 if (!auth || !firebaseAuth) { console.error("Firebase Auth não inicializado."); return; }
+                
                 const authenticate = async () => {
                     try {
                         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await firebaseAuth.signInWithCustomToken(auth, __initial_auth_token);
+                            try {
+                                await firebaseAuth.signInWithCustomToken(auth, __initial_auth_token);
+                            } catch (tokenError) {
+                                console.warn("Falha no login com Custom Token. Tentando login anônimo.", tokenError);
+                                await firebaseAuth.signInAnonymously(auth);
+                            }
                         } else {
                             await firebaseAuth.signInAnonymously(auth);
                         }
                         setIsAuthReady(true);
                     } catch (error) {
-                        console.error("Erro de autenticação:", error);
+                        console.error("Erro de autenticação final:", error);
                         setAuthError(error.code);
                         setIsLoading(false);
                     }
@@ -546,12 +551,11 @@
                 if (liveState.isLive && liveState.data?.liveState.isRunning && role === 'coordinator') {
                     interval = setInterval(() => {
                         const newTime = (liveState.data.liveState.currentTime || 0) + 1;
-                        // Otimização: Atualiza apenas o campo do tempo
                         if(liveDocRef) updateDoc(liveDocRef, { "data.liveState.currentTime": newTime });
                     }, 1000);
                 }
                 return () => clearInterval(interval);
-            }, [liveState.isLive, liveState.data?.liveState.isRunning, role]);
+            }, [liveState.isLive, liveState.data?.liveState.isRunning, liveState.data?.liveState.currentTime, role]);
 
             if (!liveState.isLive || !liveState.data) {
                 return (
@@ -634,7 +638,14 @@
             };
             
             if (!currentItem) {
-                return <div className="text-center p-10 bg-white rounded-lg shadow-md"><h2 className="text-2xl font-bold">Culto Finalizado</h2></div>
+                return (
+                    <div className="text-center p-10 bg-white rounded-lg shadow-md">
+                        <h2 className="text-2xl font-bold">Culto Finalizado</h2>
+                        {role === 'coordinator' && (
+                            <button onClick={onStopLive} className="mt-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg">Encerrar e Voltar ao Planejamento</button>
+                        )}
+                    </div>
+                );
             }
 
             return (
