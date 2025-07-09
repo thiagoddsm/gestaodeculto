@@ -27,7 +27,6 @@
 
         // --- INICIALIZAÇÃO SEGURA DO FIREBASE ---
         // Utiliza variáveis globais injetadas pelo ambiente para evitar expor configurações.
-        // Isso é uma melhoria de segurança crucial em relação à versão anterior.
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'worship-planner-default';
 
@@ -55,27 +54,12 @@
                 };
 
             } catch (e) {
-                console.error("Erro ao inicializar o Firebase: ", e);
-                // Exibe um erro se a inicialização falhar
-                document.getElementById('root').innerHTML = `
-                    <div class="flex items-center justify-center h-screen bg-red-100 text-red-800">
-                        <div class="text-center p-8">
-                            <h1 class="text-2xl font-bold">Falha na Conexão</h1>
-                            <p>Não foi possível conectar ao Firebase. Verifique a configuração e sua conexão com a internet.</p>
-                        </div>
-                    </div>
-                `;
+                console.error("Erro fatal ao inicializar o Firebase: ", e);
+                // Não escrever no DOM aqui; o React irá tratar da renderização do erro.
             }
         } else {
-             console.error("Configuração do Firebase não encontrada.");
-             document.getElementById('root').innerHTML = `
-                <div class="flex items-center justify-center h-screen bg-yellow-100 text-yellow-800">
-                    <div class="text-center p-8">
-                        <h1 class="text-2xl font-bold">Configuração Incompleta</h1>
-                        <p>A configuração do Firebase não foi fornecida a este aplicativo.</p>
-                    </div>
-                </div>
-            `;
+             console.error("Configuração do Firebase não encontrada. O aplicativo não pode ser iniciado.");
+             // Não escrever no DOM aqui; o React irá tratar da renderização do erro.
         }
     </script>
 
@@ -193,73 +177,88 @@
         // --- COMPONENTE PRINCIPAL DO APLICATIVO ---
 
         const App = () => {
-            // Estados para controle de autenticação e carregamento
-            const [isAuthReady, setIsAuthReady] = useState(false);
-            const [authError, setAuthError] = useState(null);
+            // Estado para gerir o fluxo de inicialização e autenticação de forma mais clara.
+            const [initStatus, setInitStatus] = useState('pending'); // 'pending', 'success', 'no-config', 'auth-config-error', 'error'
             const [user, setUser] = useState(null);
-            const [role, setRole] = useState('team'); // 'team' por padrão, 'coordinator' se tiver a permissão
+            const [role, setRole] = useState('team');
 
-            // Referências para as funções e objetos do Firebase no escopo global
-            const { auth, firebaseAuth } = window;
-
-            // Efeito para lidar com a autenticação na inicialização do app
             useEffect(() => {
+                const { auth, firebaseAuth } = window;
+
+                // 1. Verifica se os objetos do Firebase foram inicializados no script anterior.
                 if (!auth || !firebaseAuth) {
-                    console.error("Firebase Auth não inicializado.");
-                    setAuthError('firebase-not-initialized');
-                    setIsAuthReady(true);
+                    console.error("Configuração do Firebase não encontrada ou falhou ao inicializar.");
+                    setInitStatus('no-config');
                     return;
                 }
 
-                const unsubscribe = firebaseAuth.onAuthStateChanged(auth, async (currentUser) => {
+                const { onAuthStateChanged, signInWithCustomToken, signInAnonymously } = firebaseAuth;
+
+                // 2. Ouve as mudanças de estado de autenticação.
+                const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
                     if (currentUser) {
-                        // Utilizador está autenticado.
+                        // 4. Se o utilizador está autenticado, atualiza o estado e define como sucesso.
                         setUser(currentUser);
                         const params = new URLSearchParams(window.location.search);
                         if (params.get('role') === 'coordinator') {
                            setRole('coordinator');
                         }
-                        setIsAuthReady(true);
+                        setInitStatus('success');
                     } else {
-                        // Nenhum utilizador autenticado. Tentar autenticar agora.
+                        // 3. Se não houver utilizador, tenta fazer o login.
                         try {
                             const authToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
                             if (authToken) {
-                                await firebaseAuth.signInWithCustomToken(auth, authToken);
+                                await signInWithCustomToken(auth, authToken);
                             } else {
-                                await firebaseAuth.signInAnonymously(auth);
+                                await signInAnonymously(auth);
                             }
-                            // Após o sucesso, onAuthStateChanged será chamado novamente com o novo utilizador.
+                            // onAuthStateChanged será chamado novamente com o utilizador após o login bem-sucedido.
                         } catch (error) {
-                            console.error("Erro ao tentar autenticar:", error);
-                            if (error.code === 'auth/configuration-not-found') {
-                                setAuthError(error.code);
+                            console.error("Erro na autenticação:", error);
+                            // Trata erros específicos de configuração
+                            if (error.code === 'auth/operation-not-allowed' || error.code === 'auth/configuration-not-found') {
+                                setInitStatus('auth-config-error');
                             } else {
-                                setAuthError('generic-auth-error');
+                                setInitStatus('error');
                             }
-                            // Estamos "prontos" agora, mas num estado de erro.
-                            setIsAuthReady(true);
                         }
                     }
                 });
 
                 return () => unsubscribe();
-            }, [auth, firebaseAuth]); // Dependências adicionadas para correção
+            }, []);
 
-            // Renderização condicional baseada no estado de autenticação
-            if (authError === 'auth/configuration-not-found') {
+            // Renderiza a UI com base no estado de inicialização.
+            if (initStatus === 'pending') {
+                return <Spinner text="Inicializando..." />;
+            }
+
+            if (initStatus === 'no-config') {
+                return (
+                    <div className="flex items-center justify-center h-screen bg-yellow-100 text-yellow-800">
+                        <div className="text-center p-8 max-w-2xl mx-auto">
+                            <h1 className="text-2xl font-bold">Configuração Incompleta</h1>
+                            <p className="mt-2">A configuração do Firebase não foi fornecida a este aplicativo. O aplicativo não pode continuar. Por favor, verifique se o ambiente está configurado corretamente.</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (initStatus === 'auth-config-error') {
                 return <AuthConfigurationError />;
             }
             
-            if (authError) {
-                return <div className="flex justify-center items-center h-screen bg-red-100 text-red-700 p-4 text-center">Erro de autenticação. Verifique o console para mais detalhes.</div>;
+            if (initStatus === 'error') {
+                return <div className="flex justify-center items-center h-screen bg-red-100 text-red-700 p-4 text-center">Ocorreu um erro de autenticação. Verifique o console para mais detalhes.</div>;
             }
 
-            if (!isAuthReady || !user) {
+            if (initStatus !== 'success' || !user) {
+                // Este estado é exibido enquanto o login anónimo está em andamento.
                 return <Spinner text="Autenticando..." />;
             }
 
-            // Se autenticado, renderiza o gestor de culto
+            // Se tudo correu bem, renderiza o gestor de culto.
             return <WorshipOrderControl userRole={role} />;
         };
 
