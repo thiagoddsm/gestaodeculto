@@ -207,52 +207,44 @@
                 if (!auth || !firebaseAuth) {
                     console.error("Firebase Auth não inicializado.");
                     setAuthError('firebase-not-initialized');
+                    setIsAuthReady(true);
                     return;
                 }
 
-                const authenticate = async () => {
-                    try {
-                        const authToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-                        if (authToken) {
-                            await firebaseAuth.signInWithCustomToken(auth, authToken);
-                        } else {
-                            await firebaseAuth.signInAnonymously(auth);
-                        }
-                    } catch (error) {
-                        console.error("Erro de autenticação:", error);
-                        // Trata o erro específico de configuração não encontrada
-                        if (error.code === 'auth/configuration-not-found') {
-                            setAuthError(error.code);
-                        } else {
-                            setAuthError('generic-auth-error');
-                        }
-                    }
-                };
-
-                // Listener para mudanças no estado de autenticação
                 const unsubscribe = firebaseAuth.onAuthStateChanged(auth, async (currentUser) => {
                     if (currentUser) {
+                        // Utilizador está autenticado.
                         setUser(currentUser);
-                        // Aqui, em um app de produção, verificaríamos os custom claims do usuário
-                        // para definir o 'role'. Para esta demo, simulamos isso.
-                        // Ex: const idTokenResult = await currentUser.getIdTokenResult();
-                        // setRole(idTokenResult.claims.role === 'coordinator' ? 'coordinator' : 'team');
-                        
-                        // Para esta demo, o papel é definido por um parâmetro de URL ou padrão.
                         const params = new URLSearchParams(window.location.search);
                         if (params.get('role') === 'coordinator') {
                            setRole('coordinator');
                         }
+                        setIsAuthReady(true);
                     } else {
-                        setUser(null);
+                        // Nenhum utilizador autenticado. Tentar autenticar agora.
+                        try {
+                            const authToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                            if (authToken) {
+                                await firebaseAuth.signInWithCustomToken(auth, authToken);
+                            } else {
+                                await firebaseAuth.signInAnonymously(auth);
+                            }
+                            // Após o sucesso, onAuthStateChanged será chamado novamente com o novo utilizador.
+                        } catch (error) {
+                            console.error("Erro ao tentar autenticar:", error);
+                            if (error.code === 'auth/configuration-not-found') {
+                                setAuthError(error.code);
+                            } else {
+                                setAuthError('generic-auth-error');
+                            }
+                            // Estamos "prontos" agora, mas num estado de erro.
+                            setIsAuthReady(true);
+                        }
                     }
-                    setIsAuthReady(true);
                 });
-                
-                authenticate();
 
                 return () => unsubscribe();
-            }, []);
+            }, [auth, firebaseAuth]); // Dependências adicionadas para correção
 
             // Renderização condicional baseada no estado de autenticação
             if (authError === 'auth/configuration-not-found') {
@@ -260,7 +252,7 @@
             }
             
             if (authError) {
-                return <div className="flex justify-center items-center h-screen bg-red-100 text-red-700">Erro de autenticação. Verifique o console.</div>;
+                return <div className="flex justify-center items-center h-screen bg-red-100 text-red-700 p-4 text-center">Erro de autenticação. Verifique o console para mais detalhes.</div>;
             }
 
             if (!isAuthReady || !user) {
