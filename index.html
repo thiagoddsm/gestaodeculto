@@ -22,7 +22,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // CORREÇÃO: Adicionado updateDoc para otimizar o timer
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         const firebaseConfig = {
             apiKey: "AIzaSyCYaOPtQdD1hU29awdgeN-rEGaoLGBGYBM",
@@ -43,7 +44,7 @@
             window.db = db;
             window.auth = auth;
             window.appId = appId;
-            window.firestore = { doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc };
+            window.firestore = { doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, updateDoc }; // Adicionado updateDoc
             window.firebaseAuth = { signInAnonymously, signInWithCustomToken };
         } catch (e) {
             console.error("Erro ao inicializar o Firebase: ", e);
@@ -88,8 +89,29 @@
           FolderOpen: (props) => <SvgIcon {...props}><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v1"></path></SvgIcon>,
           Download: (props) => <SvgIcon {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></SvgIcon>,
         };
+        
+        const AuthConfigurationError = () => (
+            <div className="flex items-center justify-center min-h-screen bg-gray-100">
+                <div className="max-w-2xl p-8 bg-white rounded-lg shadow-md text-center">
+                    <h1 className="text-2xl font-bold text-red-600 mb-4">Erro de Configuração do Firebase</h1>
+                    <p className="text-gray-700 mb-6">
+                        O método de login "Anônimo" não está ativado no seu projeto Firebase. Para que o aplicativo funcione, você precisa ativá-lo.
+                    </p>
+                    <h2 className="text-lg font-semibold mb-3">Como Resolver:</h2>
+                    <ol className="text-left space-y-2 list-decimal list-inside">
+                        <li>Acesse o <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Console do Firebase</a> e abra seu projeto (`gestao-de-culto`).</li>
+                        <li>No menu à esquerda, vá em **Build > Authentication**.</li>
+                        <li>Clique na aba **Sign-in method**.</li>
+                        <li>Na lista de provedores, encontre **Anônimo** e clique no ícone de lápis para editar.</li>
+                        <li>Ative o botão e clique em **Salvar**.</li>
+                    </ol>
+                    <p className="mt-6 text-gray-600">
+                        Após salvar, recarregue esta página.
+                    </p>
+                </div>
+            </div>
+        );
 
-        // --- Componente Principal ---
         const WorshipOrderControl = () => {
             const [currentPlan, setCurrentPlan] = useState({
                 id: 'new-plan-' + Date.now(),
@@ -105,6 +127,7 @@
             const [isLoading, setIsLoading] = useState(true);
             const [isSaving, setIsSaving] = useState(false);
             const [isAuthReady, setIsAuthReady] = useState(false);
+            const [authError, setAuthError] = useState(null);
             const [role, setRole] = useState('coordinator');
             const [mode, setMode] = useState('planning');
 
@@ -133,6 +156,7 @@
                         setIsAuthReady(true);
                     } catch (error) {
                         console.error("Erro de autenticação:", error);
+                        setAuthError(error.code);
                         setIsLoading(false);
                     }
                 };
@@ -199,6 +223,10 @@
                     }
                  }
             };
+            
+            if (authError === 'auth/configuration-not-found') {
+                return <AuthConfigurationError />;
+            }
             
             if (isLoading) {
                 return <div className="flex justify-center items-center h-screen bg-gray-100">Autenticando e Carregando...</div>;
@@ -484,7 +512,7 @@
                 if (confirm("Tem certeza que deseja apagar este plano? Esta ação não pode ser desfeita.")) {
                     const planDocRef = window.firestore.doc(plansCollectionRef, planId);
                     await window.firestore.deleteDoc(planDocRef);
-                    setShow(false); // Fecha e força a re-renderização da lista
+                    setShow(false);
                 }
             };
             return (
@@ -510,6 +538,21 @@
         };
 
         const PresentationView = ({ liveState, onStopLive, role }) => {
+            const { updateDoc } = window.firestore;
+            const liveDocRef = window.db ? window.firestore.doc(window.db, "artifacts", window.appId, "public", "data", "worship-order", "live-state") : null;
+
+            useEffect(() => {
+                let interval;
+                if (liveState.isLive && liveState.data?.liveState.isRunning && role === 'coordinator') {
+                    interval = setInterval(() => {
+                        const newTime = (liveState.data.liveState.currentTime || 0) + 1;
+                        // Otimização: Atualiza apenas o campo do tempo
+                        if(liveDocRef) updateDoc(liveDocRef, { "data.liveState.currentTime": newTime });
+                    }, 1000);
+                }
+                return () => clearInterval(interval);
+            }, [liveState.isLive, liveState.data?.liveState.isRunning, role]);
+
             if (!liveState.isLive || !liveState.data) {
                 return (
                     <div className="text-center p-10 bg-white rounded-lg shadow-md">
@@ -552,6 +595,43 @@
                 }, 0);
                 return itemsBalance - initialDelayInMinutes;
             }, [items, currentItemIndex, actualStartTime, cultInfo.startTime]);
+
+            const handleLiveUpdate = (newLiveData) => {
+                if (role !== 'coordinator' || !liveDocRef) return;
+                window.firestore.setDoc(liveDocRef, { isLive: true, data: newLiveData });
+            };
+
+            const handleToggleTimer = () => {
+                const newLiveState = { ...dataLiveState, isRunning: !isRunning };
+                if (!isRunning && currentItemIndex === 0 && !actualStartTime) {
+                    newLiveState.actualStartTime = new Date().toISOString();
+                }
+                handleLiveUpdate({ ...liveState.data, liveState: newLiveState });
+            };
+
+            const handleResetTimer = () => {
+                handleLiveUpdate({ ...liveState.data, liveState: { ...dataLiveState, currentTime: 0 } });
+            };
+
+            const handleNext = () => {
+                if (currentItemIndex >= items.length - 1) return;
+                const newItems = items.map((item, index) => 
+                    index === currentItemIndex ? { ...item, completed: true, actualDuration: currentTime } : item
+                );
+                handleLiveUpdate({ 
+                    ...liveState.data, 
+                    items: newItems,
+                    liveState: { ...dataLiveState, currentItemIndex: currentItemIndex + 1, currentTime: 0, isRunning: true }
+                });
+            };
+
+            const handlePrevious = () => {
+                if (currentItemIndex <= 0) return;
+                handleLiveUpdate({
+                    ...liveState.data,
+                    liveState: { ...dataLiveState, currentItemIndex: currentItemIndex - 1, currentTime: 0 }
+                });
+            };
             
             if (!currentItem) {
                 return <div className="text-center p-10 bg-white rounded-lg shadow-md"><h2 className="text-2xl font-bold">Culto Finalizado</h2></div>
@@ -579,7 +659,14 @@
                         </div>
                         {role === 'coordinator' && (
                             <div className="flex justify-center gap-4">
-                                <button onClick={onStopLive} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg">Encerrar Culto</button>
+                                <button onClick={handlePrevious} className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg disabled:opacity-50" disabled={currentItemIndex === 0}>Anterior</button>
+                                <button onClick={handleToggleTimer} className={`px-6 py-2 rounded-lg flex items-center gap-2 text-lg ${isRunning ? 'bg-yellow-500' : 'bg-green-500'}`}>
+                                    {isRunning ? <icons.Pause size={20}/> : <icons.Play size={20}/>}
+                                    {isRunning ? 'Pausar' : 'Iniciar'}
+                                </button>
+                                <button onClick={handleResetTimer} className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg flex items-center gap-2"><icons.RotateCcw size={18}/> Reset</button>
+                                <button onClick={handleNext} className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg disabled:opacity-50" disabled={currentItemIndex >= items.length - 1}>Próximo</button>
+                                <button onClick={onStopLive} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg">Encerrar</button>
                             </div>
                         )}
                     </div>
