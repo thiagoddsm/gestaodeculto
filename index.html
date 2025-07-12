@@ -22,8 +22,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        // Adicionado 'increment' para otimização do timer
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         const firebaseConfig = {
             apiKey: "AIzaSyCYaOPtQdD1hU29awdgeN-rEGaoLGBGYBM",
@@ -44,7 +43,7 @@
             window.db = db;
             window.auth = auth;
             window.appId = appId;
-            window.firestore = { doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, updateDoc, increment };
+            window.firestore = { doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc };
             window.firebaseAuth = { signInAnonymously, signInWithCustomToken };
         } catch (e) {
             console.error("Erro ao inicializar o Firebase: ", e);
@@ -90,6 +89,7 @@
           Download: (props) => <SvgIcon {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></SvgIcon>,
         };
         
+        // --- Componente de Erro de Autenticação ---
         const AuthConfigurationError = () => (
             <div className="flex items-center justify-center min-h-screen bg-gray-100">
                 <div className="max-w-2xl p-8 bg-white rounded-lg shadow-md text-center">
@@ -112,6 +112,7 @@
             </div>
         );
 
+        // --- Componente Principal ---
         const WorshipOrderControl = () => {
             const [currentPlan, setCurrentPlan] = useState({
                 id: 'new-plan-' + Date.now(),
@@ -146,22 +147,16 @@
 
                 const { auth, firebaseAuth } = window;
                 if (!auth || !firebaseAuth) { console.error("Firebase Auth não inicializado."); return; }
-                
                 const authenticate = async () => {
                     try {
                         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            try {
-                                await firebaseAuth.signInWithCustomToken(auth, __initial_auth_token);
-                            } catch (tokenError) {
-                                console.warn("Falha no login com Custom Token. Tentando login anônimo.", tokenError);
-                                await firebaseAuth.signInAnonymously(auth);
-                            }
+                            await firebaseAuth.signInWithCustomToken(auth, __initial_auth_token);
                         } else {
                             await firebaseAuth.signInAnonymously(auth);
                         }
                         setIsAuthReady(true);
                     } catch (error) {
-                        console.error("Erro de autenticação final:", error);
+                        console.error("Erro de autenticação:", error);
                         setAuthError(error.code);
                         setIsLoading(false);
                     }
@@ -544,19 +539,6 @@
         };
 
         const PresentationView = ({ liveState, onStopLive, role }) => {
-            const { updateDoc, increment } = window.firestore;
-            const liveDocRef = window.db ? window.firestore.doc(window.db, "artifacts", window.appId, "public", "data", "worship-order", "live-state") : null;
-
-            useEffect(() => {
-                let interval;
-                if (liveState.isLive && liveState.data?.liveState.isRunning && role === 'coordinator') {
-                    interval = setInterval(() => {
-                        if(liveDocRef) updateDoc(liveDocRef, { "data.liveState.currentTime": increment(1) });
-                    }, 1000);
-                }
-                return () => clearInterval(interval);
-            }, [liveState.isLive, liveState.data?.liveState.isRunning, role]);
-
             if (!liveState.isLive || !liveState.data) {
                 return (
                     <div className="text-center p-10 bg-white rounded-lg shadow-md">
@@ -599,53 +581,9 @@
                 }, 0);
                 return itemsBalance - initialDelayInMinutes;
             }, [items, currentItemIndex, actualStartTime, cultInfo.startTime]);
-
-            const handleLiveUpdate = (newLiveData) => {
-                if (role !== 'coordinator' || !liveDocRef) return;
-                window.firestore.setDoc(liveDocRef, { isLive: true, data: newLiveData });
-            };
-
-            const handleToggleTimer = () => {
-                const newLiveState = { ...dataLiveState, isRunning: !isRunning };
-                if (!isRunning && currentItemIndex === 0 && !actualStartTime) {
-                    newLiveState.actualStartTime = new Date().toISOString();
-                }
-                handleLiveUpdate({ ...liveState.data, liveState: newLiveState });
-            };
-
-            const handleResetTimer = () => {
-                handleLiveUpdate({ ...liveState.data, liveState: { ...dataLiveState, currentTime: 0 } });
-            };
-
-            const handleNext = () => {
-                if (currentItemIndex >= items.length - 1) return;
-                const newItems = items.map((item, index) => 
-                    index === currentItemIndex ? { ...item, completed: true, actualDuration: currentTime } : item
-                );
-                handleLiveUpdate({ 
-                    ...liveState.data, 
-                    items: newItems,
-                    liveState: { ...dataLiveState, currentItemIndex: currentItemIndex + 1, currentTime: 0, isRunning: true }
-                });
-            };
-
-            const handlePrevious = () => {
-                if (currentItemIndex <= 0) return;
-                handleLiveUpdate({
-                    ...liveState.data,
-                    liveState: { ...dataLiveState, currentItemIndex: currentItemIndex - 1, currentTime: 0 }
-                });
-            };
             
             if (!currentItem) {
-                return (
-                    <div className="text-center p-10 bg-white rounded-lg shadow-md">
-                        <h2 className="text-2xl font-bold">Culto Finalizado</h2>
-                        {role === 'coordinator' && (
-                            <button onClick={onStopLive} className="mt-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg">Encerrar e Voltar ao Planejamento</button>
-                        )}
-                    </div>
-                );
+                return <div className="text-center p-10 bg-white rounded-lg shadow-md"><h2 className="text-2xl font-bold">Culto Finalizado</h2></div>
             }
 
             return (
@@ -670,14 +608,7 @@
                         </div>
                         {role === 'coordinator' && (
                             <div className="flex justify-center gap-4">
-                                <button onClick={handlePrevious} className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg disabled:opacity-50" disabled={currentItemIndex === 0}>Anterior</button>
-                                <button onClick={handleToggleTimer} className={`px-6 py-2 rounded-lg flex items-center gap-2 text-lg ${isRunning ? 'bg-yellow-500' : 'bg-green-500'}`}>
-                                    {isRunning ? <icons.Pause size={20}/> : <icons.Play size={20}/>}
-                                    {isRunning ? 'Pausar' : 'Iniciar'}
-                                </button>
-                                <button onClick={handleResetTimer} className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg flex items-center gap-2"><icons.RotateCcw size={18}/> Reset</button>
-                                <button onClick={handleNext} className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg disabled:opacity-50" disabled={currentItemIndex >= items.length - 1}>Próximo</button>
-                                <button onClick={onStopLive} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg">Encerrar</button>
+                                <button onClick={onStopLive} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg">Encerrar Culto</button>
                             </div>
                         )}
                     </div>
