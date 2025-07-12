@@ -88,29 +88,6 @@
           FolderOpen: (props) => <SvgIcon {...props}><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v1"></path></SvgIcon>,
           Download: (props) => <SvgIcon {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></SvgIcon>,
         };
-        
-        // --- Componente de Erro de Autenticação ---
-        const AuthConfigurationError = () => (
-            <div className="flex items-center justify-center min-h-screen bg-gray-100">
-                <div className="max-w-2xl p-8 bg-white rounded-lg shadow-md text-center">
-                    <h1 className="text-2xl font-bold text-red-600 mb-4">Erro de Configuração do Firebase</h1>
-                    <p className="text-gray-700 mb-6">
-                        O método de login "Anônimo" não está ativado no seu projeto Firebase. Para que o aplicativo funcione, você precisa ativá-lo.
-                    </p>
-                    <h2 className="text-lg font-semibold mb-3">Como Resolver:</h2>
-                    <ol className="text-left space-y-2 list-decimal list-inside">
-                        <li>Acesse o <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Console do Firebase</a> e abra seu projeto (`gestao-de-culto`).</li>
-                        <li>No menu à esquerda, vá em **Build > Authentication**.</li>
-                        <li>Clique na aba **Sign-in method**.</li>
-                        <li>Na lista de provedores, encontre **Anônimo** e clique no ícone de lápis para editar.</li>
-                        <li>Ative o botão e clique em **Salvar**.</li>
-                    </ol>
-                    <p className="mt-6 text-gray-600">
-                        Após salvar, recarregue esta página.
-                    </p>
-                </div>
-            </div>
-        );
 
         // --- Componente Principal ---
         const WorshipOrderControl = () => {
@@ -128,7 +105,6 @@
             const [isLoading, setIsLoading] = useState(true);
             const [isSaving, setIsSaving] = useState(false);
             const [isAuthReady, setIsAuthReady] = useState(false);
-            const [authError, setAuthError] = useState(null);
             const [role, setRole] = useState('coordinator');
             const [mode, setMode] = useState('planning');
 
@@ -157,7 +133,6 @@
                         setIsAuthReady(true);
                     } catch (error) {
                         console.error("Erro de autenticação:", error);
-                        setAuthError(error.code);
                         setIsLoading(false);
                     }
                 };
@@ -224,10 +199,6 @@
                     }
                  }
             };
-            
-            if (authError === 'auth/configuration-not-found') {
-                return <AuthConfigurationError />;
-            }
             
             if (isLoading) {
                 return <div className="flex justify-center items-center h-screen bg-gray-100">Autenticando e Carregando...</div>;
@@ -513,7 +484,7 @@
                 if (confirm("Tem certeza que deseja apagar este plano? Esta ação não pode ser desfeita.")) {
                     const planDocRef = window.firestore.doc(plansCollectionRef, planId);
                     await window.firestore.deleteDoc(planDocRef);
-                    setShow(false);
+                    setShow(false); // Fecha e força a re-renderização da lista
                 }
             };
             return (
