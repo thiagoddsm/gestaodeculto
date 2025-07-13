@@ -107,20 +107,26 @@
 
             const { db, appId, firestore } = window;
             
+            // ### INÍCIO DA CORREÇÃO FINAL ###
             const worshipDataBaseRef = useMemo(() => {
                 if (!db || !firestore || !appId) return null;
-                return firestore.doc(db, "artifacts", appId, "public", "data", "worship-order");
+                // O caminho agora tem 6 partes (par), o que é VÁLIDO para uma referência de documento.
+                // Usamos "singleton" como ID fixo do documento que conterá os dados.
+                return firestore.doc(db, "artifacts", appId, "public", "data", "worship-order", "singleton");
             }, [db, firestore, appId]);
 
             const liveDocRef = useMemo(() => {
                 if (!worshipDataBaseRef) return null;
-                return firestore.doc(worshipDataBaseRef, "state", "live");
-            }, [worshipDataBaseRef, firestore]);
+                // Mantém o estado ao vivo no próprio documento base para simplificar
+                return worshipDataBaseRef;
+            }, [worshipDataBaseRef]);
 
             const presetsCollectionRef = useMemo(() => {
                 if (!worshipDataBaseRef) return null;
+                // Cria a subcoleção 'presets' DENTRO do documento base. Isso é VÁLIDO.
                 return firestore.collection(worshipDataBaseRef, "presets");
             }, [worshipDataBaseRef, firestore]);
+            // ### FIM DA CORREÇÃO FINAL ###
 
             useEffect(() => {
                 const { auth, firebaseAuth } = window;
@@ -154,6 +160,7 @@
                 setIsSaving(true);
                 try {
                     const serializableState = JSON.parse(JSON.stringify(newState));
+                    // Usamos merge: true para não apagar a subcoleção de presets ao salvar o estado
                     await firestore.setDoc(liveDocRef, serializableState, { merge: true });
                 } catch (error) {
                     console.error("Erro ao salvar no Firebase:", error);
@@ -170,7 +177,11 @@
                 }
                 const unsubscribe = firestore.onSnapshot(liveDocRef, (docSnap) => {
                     if (docSnap.exists()) {
-                        setState(prevState => ({ ...prevState, ...docSnap.data() }));
+                        const data = docSnap.data();
+                        // Garante que só atualizamos o estado se os dados existirem
+                        if (data.items && data.cultInfo && data.liveState) {
+                           setState(data);
+                        }
                     } else {
                         saveStateToFirebase(state);
                     }
@@ -180,7 +191,7 @@
                     setIsLoading(false);
                 });
                 return () => unsubscribe();
-            }, [isAuthReady, liveDocRef, state, saveStateToFirebase]);
+            }, [isAuthReady, liveDocRef]);
             
             const fetchPresets = useCallback(async () => {
                 if (!presetsCollectionRef) return;
@@ -203,6 +214,9 @@
                 setState(newState);
                 saveStateToFirebase(newState);
             };
+            
+            // O restante do código, a partir daqui, não precisa de alterações.
+            // ...
 
             const calculateStartTimes = (items, startTime) => {
                 if (!startTime || !/^\d{2}:\d{2}$/.test(startTime)) {
@@ -285,7 +299,7 @@
                 if (preset) {
                     const newItems = calculateStartTimes(preset.items, preset.cultInfo.startTime);
                     handleStateUpdate({
-                        ...state,
+                        ...state, // Mantém o liveState atual
                         items: newItems,
                         cultInfo: preset.cultInfo
                     });
@@ -429,10 +443,10 @@
                             </div>
                         </div>
                         <div className="divide-y divide-gray-200">
-                            {items.map((item, index) => (
+                            {items && items.map((item, index) => (
                                 <PlanningItem key={item.id} item={item} index={index} isFirst={index === 0} isLast={index === items.length - 1} showTechnical={showTechnical} onUpdate={onUpdateItem} onDelete={onDeleteItem} onMove={onMoveItem} />
                             ))}
-                            {items.length === 0 && <p className="p-4 text-gray-500">Nenhum item na ordem de culto. Adicione um para começar ou importe de um arquivo CSV.</p>}
+                            {(!items || items.length === 0) && <p className="p-4 text-gray-500">Nenhum item na ordem de culto. Adicione um para começar ou importe de um arquivo CSV.</p>}
                         </div>
                     </div>
                 </>
@@ -490,7 +504,7 @@
         const PresentationView = ({ state, onStateUpdate }) => {
             const { items, cultInfo, liveState } = state;
             const { currentItemIndex, isRunning, currentTime, actualStartTime } = liveState;
-            const currentItem = items[currentItemIndex];
+            const currentItem = items && items[currentItemIndex];
 
             useEffect(() => {
                 let interval;
@@ -503,7 +517,7 @@
             }, [isRunning, onStateUpdate]);
 
             const formatTime = (seconds) => {
-                if (seconds < 0) seconds = 0;
+                if (!seconds || seconds < 0) seconds = 0;
                 const mins = Math.floor(seconds / 60);
                 const secs = seconds % 60;
                 return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
@@ -514,6 +528,7 @@
             const progressPercentage = plannedDurationInSeconds > 0 ? Math.min((currentTime / plannedDurationInSeconds) * 100, 100) : 0;
             
             const balance = useMemo(() => {
+                if (!items) return 0;
                 let initialDelayInMinutes = 0;
                 if (actualStartTime && cultInfo.startTime) {
                     const plannedStart = new Date(`1970-01-01T${cultInfo.startTime}:00`);
@@ -549,7 +564,7 @@
             };
 
             const handleNext = () => {
-                if (currentItemIndex >= items.length - 1) return;
+                if (!items || currentItemIndex >= items.length - 1) return;
                 onStateUpdate(prevState => {
                     const newItems = prevState.items.map((item, index) => 
                         index === prevState.liveState.currentItemIndex ? { ...item, completed: true, actualDuration: prevState.liveState.currentTime } : item
@@ -571,7 +586,7 @@
             };
 
             if (!currentItem) {
-                return <div className="text-center p-10 bg-white rounded-lg shadow-md"><h2 className="text-2xl font-bold">Culto Finalizado</h2></div>
+                return <div className="text-center p-10 bg-white rounded-lg shadow-md"><h2 className="text-2xl font-bold">Culto Finalizado ou sem itens.</h2></div>
             }
 
             return (
@@ -603,7 +618,7 @@
                                 {isRunning ? 'Pausar' : 'Iniciar'}
                             </button>
                             <button onClick={handleResetTimer} className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg flex items-center gap-2"><icons.RotateCcw size={18}/> Reset</button>
-                            <button onClick={handleNext} className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg disabled:opacity-50" disabled={currentItemIndex >= items.length - 1}>Próximo</button>
+                            <button onClick={handleNext} className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg disabled:opacity-50" disabled={!items || currentItemIndex >= items.length - 1}>Próximo</button>
                         </div>
                     </div>
                     <div className="bg-gray-800 rounded-lg p-4">
@@ -614,7 +629,7 @@
                             </div>
                         </div>
                         <div className="flex overflow-x-auto gap-3 pb-2">
-                          {items.map((item, index) => (
+                          {items && items.map((item, index) => (
                             <div key={item.id} className={`flex-shrink-0 w-48 p-3 rounded-lg border-2 transition-all ${index === currentItemIndex ? 'border-blue-500 bg-gray-700' : 'border-gray-600 bg-gray-700/50'}`}>
                               <div className="flex justify-between items-start">
                                 <span className="text-xs font-mono text-gray-300">{item.startTime}</span>
