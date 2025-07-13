@@ -162,7 +162,7 @@
                     if(isAuthReady) setIsLoading(false);
                     return;
                 }
-                const unsubscribe = onSnapshot(liveDocRef, (docSnap) => {
+                const unsubscribe = firestore.onSnapshot(liveDocRef, (docSnap) => {
                     if (docSnap.exists()) {
                         const data = docSnap.data();
                         if (data.items && data.cultInfo && data.liveState) {
@@ -180,15 +180,15 @@
             }, [isAuthReady, liveDocRef]);
             
             const fetchPresets = useCallback(async () => {
-                if (!presetsCollectionRef) return;
+                if (!presetsCollectionRef || !firestore) return;
                 try {
-                    const snapshot = await getDocs(presetsCollectionRef);
+                    const snapshot = await firestore.getDocs(presetsCollectionRef);
                     const presetsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     setPresets(presetsData);
                 } catch (error) {
                     console.error("Erro ao carregar presets:", error);
                 }
-            }, [presetsCollectionRef]);
+            }, [presetsCollectionRef, firestore]);
 
             useEffect(() => {
                 if(isAuthReady) {
@@ -214,8 +214,7 @@
                     return { ...item, startTime: itemStartTime };
                 });
             };
-            
-            // ... (funções de manipulação de item como addItem, updateItem, etc. permanecem iguais)
+
             const handleCultInfoChange = (field, value) => {
                 const newCultInfo = { ...state.cultInfo, [field]: value };
                 const newItems = calculateStartTimes(state.items, newCultInfo.startTime);
@@ -267,12 +266,12 @@
                             items: state.items,
                             cultInfo: state.cultInfo,
                         };
-                        await addDoc(presetsCollectionRef, presetData);
+                        await firestore.addDoc(presetsCollectionRef, presetData);
                         alert(`Preset "${presetName}" salvo com sucesso!`);
                         fetchPresets(); 
                     } catch (error) {
                         console.error("Erro ao salvar o preset:", error);
-                        alert("Ocorreu um erro ao salvar o preset.");
+                        alert(`Erro ao salvar o preset: ${error.message}`);
                     }
                 }
             };
@@ -290,7 +289,6 @@
                 }
             };
 
-            // ### ALTERADO: Função para baixar modelo em Excel ###
             const handleDownloadExcelTemplate = () => {
                 const data = [{
                     title: "Música de Abertura",
@@ -299,24 +297,15 @@
                     responsible: "Ministério de Louvor",
                     description: "Usar playback e projeção com letra."
                 }];
-
                 const worksheet = XLSX.utils.json_to_sheet(data);
                 const workbook = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(workbook, worksheet, "Ordem de Culto");
-                
-                // Define a largura das colunas
                 worksheet["!cols"] = [
-                    { wch: 30 }, // title
-                    { wch: 10 }, // duration
-                    { wch: 15 }, // type
-                    { wch: 25 }, // responsible
-                    { wch: 50 }, // description
+                    { wch: 30 }, { wch: 10 }, { wch: 15 }, { wch: 25 }, { wch: 50 },
                 ];
-
                 XLSX.writeFile(workbook, "modelo_ordem_de_culto.xlsx");
             };
 
-            // ### ALTERADO: Função para importar dados do Excel ###
             const handleImportExcel = (event) => {
                 const file = event.target.files[0];
                 if (file) {
@@ -332,7 +321,6 @@
                             const sheetName = workbook.SheetNames[0];
                             const worksheet = workbook.Sheets[sheetName];
                             const json = XLSX.utils.sheet_to_json(worksheet);
-
                             const newItemsFromExcel = json.map(row => ({
                                 id: Date.now() + Math.random(),
                                 title: row.title || 'Sem Título',
@@ -376,7 +364,6 @@
                                 </button>
                             </div>
                         </div>
-
                         {mode === 'planning' ? (
                             <PlanningView 
                                 items={state.items} 
@@ -389,7 +376,7 @@
                                 onMoveItem={moveItem}
                                 onSavePreset={handleSavePreset}
                                 onLoadPreset={handleLoadPreset}
-                                onDownloadTemplate={handleDownloadExcelTemplate} // <-- ALTERADO
+                                onDownloadTemplate={handleDownloadExcelTemplate}
                                 onImportClick={() => fileInputRef.current.click()}
                                 presets={presets}
                             />
@@ -399,7 +386,6 @@
                                 onStateUpdate={handleStateUpdate}
                             />
                         )}
-                        {/* ### ALTERADO: Aceita arquivos .xlsx e .xls ### */}
                         <input 
                             type="file" 
                             accept=".xlsx, .xls" 
@@ -428,7 +414,7 @@
                     <div className="bg-white rounded-lg p-6 mb-6 shadow-sm">
                         <h2 className="text-xl font-semibold mb-4">Informações do Culto</h2>
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                            <InfoInput label="Data" value={cultInfo.date} onChange={e => onCultInfoChange('date', e.target.value)} />
+                            <InfoInput label="Data" type="text" value={cultInfo.date} onChange={e => onCultInfoChange('date', e.target.value)} />
                             <InfoInput label="Coordenador" value={cultInfo.coordinator} onChange={e => onCultInfoChange('coordinator', e.target.value)} />
                             <InfoInput label="Dirigente" value={cultInfo.leader} onChange={e => onCultInfoChange('leader', e.target.value)} />
                             <InfoInput label="Louvor" value={cultInfo.worship} onChange={e => onCultInfoChange('worship', e.target.value)} />
@@ -443,11 +429,10 @@
                         <div className="p-4 border-b flex flex-wrap justify-between items-center gap-3">
                             <h2 className="text-xl font-semibold">Ordem de Culto</h2>
                             <div className="flex flex-wrap gap-2">
-                                {/* ### ALTERADO: Textos dos botões ### */}
                                 <button onClick={onImportClick} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.UploadCloud size={16}/> Importar Excel</button>
                                 <button onClick={onDownloadTemplate} className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.DownloadCloud size={16}/> Baixar Modelo</button>
                                 <button onClick={onSavePreset} className="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.Save size={16}/> Salvar Preset</button>
-                                <select onChange={(e) => { if(e.target.value) onLoadPreset(e.target.value) }} className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-md text-sm font-semibold" value="">
+                                <select onChange={(e) => { if(e.target.value) onLoadPreset(e.target.value); e.target.value = ""; }} className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-md text-sm font-semibold" value="">
                                     <option value="" disabled>Carregar Preset</option>
                                     {presets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                 </select>
