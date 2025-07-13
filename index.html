@@ -24,15 +24,13 @@
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // CORREÇÃO: Dados do Firebase inseridos diretamente no código
-        const firebaseConfig = {
-            apiKey: "AIzaSyCYaOPtQdD1hU29awdgeN-rEGaoLGBGYBM",
-            authDomain: "gestao-de-culto.firebaseapp.com",
-            projectId: "gestao-de-culto",
-            storageBucket: "gestao-de-culto.appspot.com",
-            messagingSenderId: "843566675046",
-            appId: "1:843566675046:web:cc1e54a813827f4502a9a7",
-            measurementId: "G-LH68N60385"
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "SUA_API_KEY", // Substitua se não estiver no ambiente Canvas
+            authDomain: "SEU_AUTH_DOMAIN",
+            projectId: "SEU_PROJECT_ID",
+            storageBucket: "SEU_STORAGE_BUCKET",
+            messagingSenderId: "SEU_MESSAGING_SENDER_ID",
+            appId: "SEU_APP_ID"
         };
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'worship-planner-default';
@@ -110,7 +108,6 @@
             const [isLoading, setIsLoading] = useState(true);
             const [isSaving, setIsSaving] = useState(false);
             const [isAuthReady, setIsAuthReady] = useState(false);
-            const [role, setRole] = useState('coordinator'); // 'coordinator' ou 'team'
             const [mode, setMode] = useState('planning');
             const [showTechnical, setShowTechnical] = useState(true);
 
@@ -120,12 +117,6 @@
             const docRef = db && firestore ? firestore.doc(db, "artifacts", appId, "public", "data", "worship-order", "live-state") : null;
 
             useEffect(() => {
-                const params = new URLSearchParams(window.location.search);
-                if (params.get('view') === 'live') {
-                    setRole('team');
-                    setMode('presentation');
-                }
-
                 const { auth, firebaseAuth } = window;
                 if (!auth || !firebaseAuth) { console.error("Firebase Auth não inicializado."); return; }
                 const authenticate = async () => {
@@ -145,7 +136,7 @@
             }, []);
             
             const saveStateToFirebase = useCallback(async (newState) => {
-                if (!docRef || role === 'team') return; 
+                if (!docRef) return;
                 setIsSaving(true);
                 try {
                     await firestore.setDoc(docRef, newState);
@@ -154,15 +145,18 @@
                 } finally {
                     setTimeout(() => setIsSaving(false), 500);
                 }
-            }, [docRef, firestore, role]);
+            }, [docRef, firestore]);
 
             useEffect(() => {
                 if (!isAuthReady || !docRef) return;
                 const unsubscribe = firestore.onSnapshot(docRef, (docSnap) => {
                     if (docSnap.exists()) {
                         setState(docSnap.data());
-                    } else if (role === 'coordinator') {
-                        saveStateToFirebase(state);
+                    } else {
+                        // CORREÇÃO: Não salva mais um estado em branco.
+                        // Apenas mantém o estado local inicial.
+                        // O primeiro salvamento ocorrerá com a primeira ação do usuário.
+                        console.log("Documento não encontrado. O primeiro salvamento irá criá-lo.");
                     }
                     setIsLoading(false);
                 }, (error) => {
@@ -170,7 +164,7 @@
                     setIsLoading(false);
                 });
                 return () => unsubscribe();
-            }, [isAuthReady, docRef, role]);
+            }, [isAuthReady, docRef]);
 
             const handleStateUpdate = (newState) => {
                 setState(newState);
@@ -241,21 +235,19 @@
                     <div className="max-w-7xl mx-auto">
                         <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
                             <h1 className="text-3xl font-bold text-gray-800">Gestor de Culto</h1>
-                            {role === 'coordinator' && (
-                                <div className="flex items-center gap-2">
-                                    {isSaving && <div className="text-sm text-gray-500 flex items-center gap-1"><icons.Server size={14}/> Salvando...</div>}
-                                    <button onClick={() => setShowTechnical(!showTechnical)} className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-md flex items-center gap-2 text-sm">
-                                        <icons.Monitor size={16} /> <span>Técnico</span>
-                                    </button>
-                                    <button onClick={() => setMode(mode === 'planning' ? 'presentation' : 'planning')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center gap-2">
-                                        {mode === 'planning' ? <icons.Play size={18}/> : <icons.Settings size={18}/>}
-                                        <span>{mode === 'planning' ? 'Modo Ao Vivo' : 'Planejamento'}</span>
-                                    </button>
-                                </div>
-                            )}
+                            <div className="flex items-center gap-2">
+                                {isSaving && <div className="text-sm text-gray-500 flex items-center gap-1"><icons.Server size={14}/> Salvando...</div>}
+                                <button onClick={() => setShowTechnical(!showTechnical)} className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-md flex items-center gap-2 text-sm">
+                                    <icons.Monitor size={16} /> <span>Técnico</span>
+                                </button>
+                                <button onClick={() => setMode(mode === 'planning' ? 'presentation' : 'planning')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center gap-2">
+                                    {mode === 'planning' ? <icons.Play size={18}/> : <icons.Settings size={18}/>}
+                                    <span>{mode === 'planning' ? 'Modo Ao Vivo' : 'Planejamento'}</span>
+                                </button>
+                            </div>
                         </div>
 
-                        {mode === 'planning' && role === 'coordinator' ? (
+                        {mode === 'planning' ? (
                             <PlanningView 
                                 state={state}
                                 onCultInfoChange={handleCultInfoChange}
@@ -270,7 +262,6 @@
                             <PresentationView 
                                 state={state}
                                 onStateUpdate={handleStateUpdate}
-                                role={role}
                             />
                         )}
                     </div>
@@ -431,20 +422,20 @@
             )
         };
         
-        const PresentationView = ({ state, onStateUpdate, role }) => {
+        const PresentationView = ({ state, onStateUpdate }) => {
             const { items, cultInfo, liveState } = state;
             const { currentItemIndex, isRunning, currentTime, actualStartTime } = liveState;
             const currentItem = items[currentItemIndex];
 
             useEffect(() => {
                 let interval;
-                if (isRunning && role === 'coordinator') {
+                if (isRunning) {
                     interval = setInterval(() => {
                         onStateUpdate({ ...state, liveState: { ...liveState, currentTime: liveState.currentTime + 1 } });
                     }, 1000);
                 }
                 return () => clearInterval(interval);
-            }, [isRunning, liveState.currentTime, role]);
+            }, [isRunning, liveState.currentTime]);
 
             const formatTime = (seconds) => {
                 if (seconds < 0) seconds = 0;
@@ -481,7 +472,6 @@
             }, [items, currentItemIndex, actualStartTime, cultInfo.startTime]);
 
             const handleToggleTimer = () => {
-                if (role !== 'coordinator') return;
                 const newLiveState = { ...liveState, isRunning: !isRunning };
                 if (!isRunning && currentItemIndex === 0 && !actualStartTime) {
                     newLiveState.actualStartTime = new Date().toISOString();
@@ -490,12 +480,11 @@
             };
 
             const handleResetTimer = () => {
-                if (role !== 'coordinator') return;
                 onStateUpdate({ ...state, liveState: { ...liveState, currentTime: 0 } });
             };
 
             const handleNext = () => {
-                if (role !== 'coordinator' || currentItemIndex >= items.length - 1) return;
+                if (currentItemIndex >= items.length - 1) return;
                 const newItems = items.map((item, index) => 
                     index === currentItemIndex ? { ...item, completed: true, actualDuration: currentTime } : item
                 );
@@ -507,7 +496,7 @@
             };
 
             const handlePrevious = () => {
-                if (role !== 'coordinator' || currentItemIndex <= 0) return;
+                if (currentItemIndex <= 0) return;
                 onStateUpdate({
                     ...state,
                     liveState: { ...liveState, currentItemIndex: currentItemIndex - 1, currentTime: 0 }
@@ -543,17 +532,15 @@
                             <div className={`h-4 rounded-full transition-all duration-500 ${isOvertime ? 'bg-red-500' : 'bg-green-500'}`} style={{ width: `${progressPercentage}%` }}/>
                         </div>
 
-                        {role === 'coordinator' && (
-                            <div className="flex justify-center gap-4">
-                                <button onClick={handlePrevious} className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg disabled:opacity-50" disabled={currentItemIndex === 0}>Anterior</button>
-                                <button onClick={handleToggleTimer} className={`px-6 py-2 rounded-lg flex items-center gap-2 text-lg ${isRunning ? 'bg-yellow-500' : 'bg-green-500'}`}>
-                                    {isRunning ? <icons.Pause size={20}/> : <icons.Play size={20}/>}
-                                    {isRunning ? 'Pausar' : 'Iniciar'}
-                                </button>
-                                <button onClick={handleResetTimer} className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg flex items-center gap-2"><icons.RotateCcw size={18}/> Reset</button>
-                                <button onClick={handleNext} className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg disabled:opacity-50" disabled={currentItemIndex >= items.length - 1}>Próximo</button>
-                            </div>
-                        )}
+                        <div className="flex justify-center gap-4">
+                            <button onClick={handlePrevious} className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg disabled:opacity-50" disabled={currentItemIndex === 0}>Anterior</button>
+                            <button onClick={handleToggleTimer} className={`px-6 py-2 rounded-lg flex items-center gap-2 text-lg ${isRunning ? 'bg-yellow-500' : 'bg-green-500'}`}>
+                                {isRunning ? <icons.Pause size={20}/> : <icons.Play size={20}/>}
+                                {isRunning ? 'Pausar' : 'Iniciar'}
+                            </button>
+                            <button onClick={handleResetTimer} className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg flex items-center gap-2"><icons.RotateCcw size={18}/> Reset</button>
+                            <button onClick={handleNext} className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg disabled:opacity-50" disabled={currentItemIndex >= items.length - 1}>Próximo</button>
+                        </div>
                     </div>
 
                     <div className="bg-gray-800 rounded-lg p-4">
