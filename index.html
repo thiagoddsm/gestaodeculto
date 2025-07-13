@@ -62,588 +62,293 @@
     </div>
 
     <script type="text/babel">
-        const { useState, useEffect, useCallback, useMemo, useRef } = React;
+    const { useState, useEffect, useCallback, useMemo, useRef } = React;
 
-        const SvgIcon = ({ size = 24, className = '', children }) => (
-          <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>
-        );
-        const icons = {
-          Plus: (props) => <SvgIcon {...props}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></SvgIcon>,
-          Play: (props) => <SvgIcon {...props}><polygon points="5 3 19 12 5 21 5 3"></polygon></SvgIcon>,
-          Pause: (props) => <SvgIcon {...props}><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></SvgIcon>,
-          Settings: (props) => <SvgIcon {...props}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l-.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></SvgIcon>,
-          Monitor: (props) => <SvgIcon {...props}><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></SvgIcon>,
-          Server: (props) => <SvgIcon {...props}><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></SvgIcon>,
-          ChevronUp: (props) => <SvgIcon {...props}><polyline points="18 15 12 9 6 15"></polyline></SvgIcon>,
-          ChevronDown: (props) => <SvgIcon {...props}><polyline points="6 9 12 15 18 9"></polyline></SvgIcon>,
-          Trash2: (props) => <SvgIcon {...props}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></SvgIcon>,
-          CheckCircle: (props) => <SvgIcon {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></SvgIcon>,
-          RotateCcw: (props) => <SvgIcon {...props}><path d="M3 2v6h6"></path><path d="M3 13a9 9 0 1 0 3-7.7L3 8"></path></SvgIcon>,
-          Clock: (props) => <SvgIcon {...props}><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></SvgIcon>,
-          UploadCloud: (props) => <SvgIcon {...props}><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></SvgIcon>,
-          DownloadCloud: (props) => <SvgIcon {...props}><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4 4 4-4"/></SvgIcon>,
-          Save: (props) => <SvgIcon {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></SvgIcon>,
-        };
+    // ... (Componente SvgIcon e objeto icons permanecem iguais)
+    const SvgIcon = ({ size = 24, className = '', children }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>
+    );
+    const icons = {
+      Plus: (props) => <SvgIcon {...props}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></SvgIcon>,
+      Play: (props) => <SvgIcon {...props}><polygon points="5 3 19 12 5 21 5 3"></polygon></SvgIcon>,
+      Pause: (props) => <SvgIcon {...props}><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></SvgIcon>,
+      Settings: (props) => <SvgIcon {...props}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l-.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></SvgIcon>,
+      Monitor: (props) => <SvgIcon {...props}><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></SvgIcon>,
+      Server: (props) => <SvgIcon {...props}><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></SvgIcon>,
+      ChevronUp: (props) => <SvgIcon {...props}><polyline points="18 15 12 9 6 15"></polyline></SvgIcon>,
+      ChevronDown: (props) => <SvgIcon {...props}><polyline points="6 9 12 15 18 9"></polyline></SvgIcon>,
+      Trash2: (props) => <SvgIcon {...props}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></SvgIcon>,
+      CheckCircle: (props) => <SvgIcon {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></SvgIcon>,
+      RotateCcw: (props) => <SvgIcon {...props}><path d="M3 2v6h6"></path><path d="M3 13a9 9 0 1 0 3-7.7L3 8"></path></SvgIcon>,
+      Clock: (props) => <SvgIcon {...props}><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></SvgIcon>,
+      UploadCloud: (props) => <SvgIcon {...props}><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></SvgIcon>,
+      DownloadCloud: (props) => <SvgIcon {...props}><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4 4 4-4"/></SvgIcon>,
+      Save: (props) => <SvgIcon {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></SvgIcon>,
+    };
 
-        const WorshipOrderControl = () => {
-            const [state, setState] = useState({
-                items: [],
-                cultInfo: {
-                    date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric'}),
-                    coordinator: 'Coordenador', leader: 'Dirigente', worship: 'Louvor', preacher: 'Pregador',
-                    startTime: '19:00', liveTime: '19:30'
-                },
-                liveState: {
-                    currentItemIndex: 0, isRunning: false, currentTime: 0, actualStartTime: null,
+    const WorshipOrderControl = () => {
+        // ... (useState e outras declarações de hooks permanecem iguais)
+        const [state, setState] = useState({
+            items: [],
+            cultInfo: {
+                date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric'}),
+                coordinator: 'Coordenador', leader: 'Dirigente', worship: 'Louvor', preacher: 'Pregador',
+                startTime: '19:00', liveTime: '19:30'
+            },
+            liveState: {
+                currentItemIndex: 0, isRunning: false, currentTime: 0, actualStartTime: null,
+            }
+        });
+        const [isLoading, setIsLoading] = useState(true);
+        const [isSaving, setIsSaving] = useState(false);
+        const [isAuthReady, setIsAuthReady] = useState(false);
+        const [mode, setMode] = useState('planning');
+        const [showTechnical, setShowTechnical] = useState(true);
+        const [presets, setPresets] = useState([]);
+        const fileInputRef = useRef(null);
+
+        // ... (useMemo para referências do Firebase permanece igual)
+        const { db, appId, firestore } = window;
+        const worshipDataBaseRef = useMemo(() => {
+            if (!db || !firestore || !appId) return null;
+            return firestore.doc(db, "artifacts", appId, "public", "data", "worship-order", "singleton");
+        }, [db, firestore, appId]);
+        const liveDocRef = useMemo(() => {
+            return worshipDataBaseRef;
+        }, [worshipDataBaseRef]);
+        const presetsCollectionRef = useMemo(() => {
+            if (!worshipDataBaseRef) return null;
+            return firestore.collection(worshipDataBaseRef, "presets");
+        }, [worshipDataBaseRef, firestore]);
+
+        // ... (useEffect de autenticação e saveStateToFirebase permanecem iguais)
+        useEffect(() => {
+            const { auth, firebaseAuth } = window;
+            if (!auth || !firebaseAuth) { console.error("Firebase Auth não inicializado."); setIsLoading(false); return; }
+            const authenticate = async () => {
+                try {
+                    if (auth.currentUser) { setIsAuthReady(true); return; }
+                    await firebaseAuth.signInAnonymously(auth);
+                    setIsAuthReady(true);
+                } catch (error) {
+                    console.error("Erro de autenticação:", error);
+                    setIsLoading(false);
                 }
+            };
+            authenticate();
+        }, []);
+        const saveStateToFirebase = useCallback(async (newState) => {
+            if (!liveDocRef) return;
+            setIsSaving(true);
+            try {
+                const serializableState = JSON.parse(JSON.stringify(newState));
+                await firestore.setDoc(liveDocRef, serializableState, { merge: true });
+            } catch (error) {
+                console.error("Erro ao salvar no Firebase:", error);
+            } finally {
+                setTimeout(() => setIsSaving(false), 500);
+            }
+        }, [liveDocRef, firestore]);
+
+        // ... (useEffect do onSnapshot permanece igual)
+        useEffect(() => {
+            if (!isAuthReady || !liveDocRef) { if(isAuthReady) setIsLoading(false); return; }
+            const unsubscribe = firestore.onSnapshot(liveDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (data.items && data.cultInfo && data.liveState) { setState(data); }
+                } else {
+                    saveStateToFirebase(state);
+                }
+                setIsLoading(false);
+            }, (error) => {
+                console.error("Erro no listener do Firebase: ", error);
+                setIsLoading(false);
             });
-            const [isLoading, setIsLoading] = useState(true);
-            const [isSaving, setIsSaving] = useState(false);
-            const [isAuthReady, setIsAuthReady] = useState(false);
-            const [mode, setMode] = useState('planning');
-            const [showTechnical, setShowTechnical] = useState(true);
-            const [presets, setPresets] = useState([]);
-            const fileInputRef = useRef(null);
+            return () => unsubscribe();
+        }, [isAuthReady, liveDocRef]);
 
-            const { db, appId, firestore } = window;
-            
-            const worshipDataBaseRef = useMemo(() => {
-                if (!db || !firestore || !appId) return null;
-                return firestore.doc(db, "artifacts", appId, "public", "data", "worship-order", "singleton");
-            }, [db, firestore, appId]);
-
-            const liveDocRef = useMemo(() => {
-                return worshipDataBaseRef;
-            }, [worshipDataBaseRef]);
-
-            const presetsCollectionRef = useMemo(() => {
-                if (!worshipDataBaseRef) return null;
-                return firestore.collection(worshipDataBaseRef, "presets");
-            }, [worshipDataBaseRef, firestore]);
-
-            useEffect(() => {
-                const { auth, firebaseAuth } = window;
-                if (!auth || !firebaseAuth) { 
-                    console.error("Firebase Auth não inicializado."); 
-                    setIsLoading(false); 
-                    return; 
-                }
-                const authenticate = async () => {
-                    try {
-                        if (auth.currentUser) {
-                            setIsAuthReady(true);
-                            return;
-                        }
-                        await firebaseAuth.signInAnonymously(auth);
-                        setIsAuthReady(true);
-                    } catch (error) {
-                        console.error("Erro de autenticação:", error);
-                        setIsLoading(false);
-                    }
-                };
-                authenticate();
-            }, []);
-            
-            const saveStateToFirebase = useCallback(async (newState) => {
-                if (!liveDocRef) return;
-                setIsSaving(true);
-                try {
-                    const serializableState = JSON.parse(JSON.stringify(newState));
-                    await firestore.setDoc(liveDocRef, serializableState, { merge: true });
-                } catch (error) {
-                    console.error("Erro ao salvar no Firebase:", error);
-                } finally {
-                    setTimeout(() => setIsSaving(false), 500);
-                }
-            }, [liveDocRef, firestore]);
-
-            useEffect(() => {
-                if (!isAuthReady || !liveDocRef) {
-                    if(isAuthReady) setIsLoading(false);
-                    return;
-                }
-                const unsubscribe = firestore.onSnapshot(liveDocRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        const data = docSnap.data();
-                        if (data.items && data.cultInfo && data.liveState) {
-                           setState(data);
-                        }
-                    } else {
-                        saveStateToFirebase(state);
-                    }
-                    setIsLoading(false);
-                }, (error) => {
-                    console.error("Erro no listener do Firebase: ", error);
-                    setIsLoading(false);
-                });
-                return () => unsubscribe();
-            }, [isAuthReady, liveDocRef]);
-            
-            const fetchPresets = useCallback(async () => {
-                if (!presetsCollectionRef || !firestore) return;
-                try {
-                    const snapshot = await firestore.getDocs(presetsCollectionRef);
-                    const presetsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setPresets(presetsData);
-                } catch (error) {
-                    console.error("Erro ao carregar presets:", error);
-                }
-            }, [presetsCollectionRef, firestore]);
-
-            useEffect(() => {
-                if(isAuthReady) {
-                    fetchPresets();
-                }
-            }, [isAuthReady, fetchPresets]);
-
-            const handleStateUpdate = (newState) => {
-                setState(newState);
-                saveStateToFirebase(newState);
-            };
-
-            const calculateStartTimes = (items, startTime) => {
-                if (!startTime || !/^\d{2}:\d{2}$/.test(startTime)) {
-                    return items.map(item => ({...item, startTime: '--:--'}));
-                }
-                let cumulativeTime = new Date(`1970-01-01T${startTime}:00`);
-                if (isNaN(cumulativeTime)) return items.map(item => ({...item, startTime: '--:--'}));
-
-                return items.map(item => {
-                    const itemStartTime = cumulativeTime.toTimeString().slice(0, 5);
-                    cumulativeTime.setMinutes(cumulativeTime.getMinutes() + (Number(item.duration) || 0));
-                    return { ...item, startTime: itemStartTime };
-                });
-            };
-
-            const handleCultInfoChange = (field, value) => {
-                const newCultInfo = { ...state.cultInfo, [field]: value };
-                const newItems = calculateStartTimes(state.items, newCultInfo.startTime);
-                handleStateUpdate({ ...state, cultInfo: newCultInfo, items: newItems });
-            };
-
-            const addItem = () => {
-                const newItem = {
-                    id: Date.now(), title: 'Novo Momento', duration: 5, type: 'palavra', responsible: 'A definir', description: '',
-                    technical: { projection: '-', sound: '-', microphone: '-', lighting: '-', camera: '-' },
-                    completed: false, actualDuration: null,
-                };
-                const newItems = calculateStartTimes([...state.items, newItem], state.cultInfo.startTime);
-                handleStateUpdate({ ...state, items: newItems });
-            };
-
-            const updateItem = (id, updates) => {
-                let newItems = state.items.map(item => item.id === id ? { ...item, ...updates } : item);
-                if (updates.duration !== undefined) {
-                    newItems = calculateStartTimes(newItems, state.cultInfo.startTime);
-                }
-                handleStateUpdate({ ...state, items: newItems });
-            };
-            
-            const deleteItem = (id) => {
-                if (confirm('Tem certeza que deseja excluir este item?')) {
-                    const newItems = calculateStartTimes(state.items.filter(item => item.id !== id), state.cultInfo.startTime);
-                    handleStateUpdate({ ...state, items: newItems });
-                }
-            };
-            
-            const moveItem = (index, direction) => {
-                const currentItems = [...state.items];
-                const newIndex = index + direction;
-                if (newIndex < 0 || newIndex >= currentItems.length) return;
-                const item = currentItems.splice(index, 1)[0];
-                currentItems.splice(newIndex, 0, item);
-                const newItems = calculateStartTimes(currentItems, state.cultInfo.startTime);
-                handleStateUpdate({ ...state, items: newItems });
-            };
-
-            const handleSavePreset = async () => {
-                const presetName = prompt("Digite um nome para este preset:", "Modelo de Culto Padrão");
-                if (presetName && presetsCollectionRef) {
-                    try {
-                        const presetData = {
-                            name: presetName,
-                            savedAt: new Date().toISOString(),
-                            items: state.items,
-                            cultInfo: state.cultInfo,
-                        };
-                        await firestore.addDoc(presetsCollectionRef, presetData);
-                        alert(`Preset "${presetName}" salvo com sucesso!`);
-                        fetchPresets(); 
-                    } catch (error) {
-                        console.error("Erro ao salvar o preset:", error);
-                        alert(`Erro ao salvar o preset: ${error.message}`);
-                    }
-                }
-            };
-            
-            const handleLoadPreset = (presetId) => {
-                if (!confirm("Isso substituirá a ordem de culto atual. Deseja continuar?")) return;
-                const preset = presets.find(p => p.id === presetId);
-                if (preset) {
-                    const newItems = calculateStartTimes(preset.items, preset.cultInfo.startTime);
-                    handleStateUpdate({
-                        ...state,
-                        items: newItems,
-                        cultInfo: preset.cultInfo
-                    });
-                }
-            };
-
-            const handleDownloadExcelTemplate = () => {
-                const data = [{
-                    title: "Música de Abertura",
-                    duration: 10,
-                    type: "música",
-                    responsible: "Ministério de Louvor",
-                    description: "Usar playback e projeção com letra."
-                }];
-                const worksheet = XLSX.utils.json_to_sheet(data);
-                const workbook = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(workbook, worksheet, "Ordem de Culto");
-                worksheet["!cols"] = [
-                    { wch: 30 }, { wch: 10 }, { wch: 15 }, { wch: 25 }, { wch: 50 },
-                ];
-                XLSX.writeFile(workbook, "modelo_ordem_de_culto.xlsx");
-            };
-
-            const handleImportExcel = (event) => {
-                const file = event.target.files[0];
-                if (file) {
-                    if (!confirm("Isso substituirá a ordem de culto atual com os dados do arquivo. Deseja continuar?")) {
-                        event.target.value = null; 
-                        return;
-                    }
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        try {
-                            const data = e.target.result;
-                            const workbook = XLSX.read(data, { type: 'array' });
-                            const sheetName = workbook.SheetNames[0];
-                            const worksheet = workbook.Sheets[sheetName];
-                            const json = XLSX.utils.sheet_to_json(worksheet);
-                            const newItemsFromExcel = json.map(row => ({
-                                id: Date.now() + Math.random(),
-                                title: row.title || 'Sem Título',
-                                duration: parseInt(row.duration, 10) || 5,
-                                type: row.type || 'palavra',
-                                responsible: row.responsible || 'A definir',
-                                description: row.description || '',
-                                technical: { projection: '-', sound: '-', microphone: '-', lighting: '-', camera: '-' },
-                                completed: false,
-                                actualDuration: null,
-                            }));
-                            const newItems = calculateStartTimes(newItemsFromExcel, state.cultInfo.startTime);
-                            handleStateUpdate({ ...state, items: newItems });
-                        } catch(error) {
-                            alert("Ocorreu um erro ao ler o arquivo Excel. Verifique se o formato está correto.");
-                            console.error("Erro no SheetJS:", error);
-                        }
-                    };
-                    reader.readAsArrayBuffer(file);
-                    event.target.value = null;
-                }
-            };
-            
-            if (isLoading) {
-                return <div className="flex justify-center items-center h-screen bg-gray-100">Autenticando e Carregando...</div>;
+        // ### ALTERADO: Adicionado logs de depuração em fetchPresets ###
+        const fetchPresets = useCallback(async () => {
+            if (!presetsCollectionRef || !firestore) return;
+            console.log("Buscando presets do Firestore...");
+            try {
+                const snapshot = await firestore.getDocs(presetsCollectionRef);
+                const presetsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                console.log("Presets encontrados:", presetsData);
+                setPresets(presetsData);
+            } catch (error) {
+                console.error("Erro ao carregar presets:", error);
             }
-            
-            return (
-                <div className="min-h-screen bg-gray-100 p-4">
-                    <div className="max-w-7xl mx-auto">
-                        <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
-                            <h1 className="text-3xl font-bold text-gray-800">Gestor de Culto</h1>
-                            <div className="flex items-center gap-2">
-                                {isSaving && <div className="text-sm text-gray-500 flex items-center gap-1"><icons.Server size={14}/> Salvando...</div>}
-                                <button onClick={() => setShowTechnical(!showTechnical)} className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-md flex items-center gap-2 text-sm">
-                                    <icons.Monitor size={16} /> <span>Técnico</span>
-                                </button>
-                                <button onClick={() => setMode(mode === 'planning' ? 'presentation' : 'planning')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center gap-2">
-                                    {mode === 'planning' ? <icons.Play size={18}/> : <icons.Settings size={18}/>}
-                                    <span>{mode === 'planning' ? 'Modo Ao Vivo' : 'Planejamento'}</span>
-                                </button>
-                            </div>
-                        </div>
-                        {mode === 'planning' ? (
-                            <PlanningView 
-                                items={state.items} 
-                                cultInfo={state.cultInfo}
-                                onCultInfoChange={handleCultInfoChange}
-                                showTechnical={showTechnical} 
-                                onAddItem={addItem} 
-                                onUpdateItem={updateItem}
-                                onDeleteItem={deleteItem}
-                                onMoveItem={moveItem}
-                                onSavePreset={handleSavePreset}
-                                onLoadPreset={handleLoadPreset}
-                                onDownloadTemplate={handleDownloadExcelTemplate}
-                                onImportClick={() => fileInputRef.current.click()}
-                                presets={presets}
-                            />
-                        ) : (
-                            <PresentationView 
-                                state={state}
-                                onStateUpdate={handleStateUpdate}
-                            />
-                        )}
-                        <input 
-                            type="file" 
-                            accept=".xlsx, .xls" 
-                            ref={fileInputRef} 
-                            className="hidden-file-input" 
-                            onChange={handleImportExcel} 
-                        />
-                    </div>
-                </div>
-            );
+        }, [presetsCollectionRef, firestore]);
+
+        useEffect(() => {
+            if(isAuthReady) {
+                fetchPresets();
+            }
+        }, [isAuthReady, fetchPresets]);
+
+        // ... (handleStateUpdate, calculateStartTimes, etc. permanecem iguais)
+        const handleStateUpdate = (newState) => { setState(newState); saveStateToFirebase(newState); };
+        const calculateStartTimes = (items, startTime) => {
+            if (!startTime || !/^\d{2}:\d{2}$/.test(startTime)) { return items.map(item => ({...item, startTime: '--:--'})); }
+            let cumulativeTime = new Date(`1970-01-01T${startTime}:00`);
+            if (isNaN(cumulativeTime)) return items.map(item => ({...item, startTime: '--:--'}));
+            return items.map(item => {
+                const itemStartTime = cumulativeTime.toTimeString().slice(0, 5);
+                cumulativeTime.setMinutes(cumulativeTime.getMinutes() + (Number(item.duration) || 0));
+                return { ...item, startTime: itemStartTime };
+            });
         };
-        
-        const InfoInput = ({ label, ...props }) => (
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-                <input {...props} className="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" />
+        const handleCultInfoChange = (field, value) => {
+            const newCultInfo = { ...state.cultInfo, [field]: value };
+            const newItems = calculateStartTimes(state.items, newCultInfo.startTime);
+            handleStateUpdate({ ...state, cultInfo: newCultInfo, items: newItems });
+        };
+        const addItem = () => {
+            const newItem = { id: Date.now(), title: 'Novo Momento', duration: 5, type: 'palavra', responsible: 'A definir', description: '', technical: { projection: '-', sound: '-', microphone: '-', lighting: '-', camera: '-' }, completed: false, actualDuration: null, };
+            const newItems = calculateStartTimes([...state.items, newItem], state.cultInfo.startTime);
+            handleStateUpdate({ ...state, items: newItems });
+        };
+        const updateItem = (id, updates) => {
+            let newItems = state.items.map(item => item.id === id ? { ...item, ...updates } : item);
+            if (updates.duration !== undefined) { newItems = calculateStartTimes(newItems, state.cultInfo.startTime); }
+            handleStateUpdate({ ...state, items: newItems });
+        };
+        const deleteItem = (id) => {
+            if (confirm('Tem certeza que deseja excluir este item?')) {
+                const newItems = calculateStartTimes(state.items.filter(item => item.id !== id), state.cultInfo.startTime);
+                handleStateUpdate({ ...state, items: newItems });
+            }
+        };
+        const moveItem = (index, direction) => {
+            const currentItems = [...state.items];
+            const newIndex = index + direction;
+            if (newIndex < 0 || newIndex >= currentItems.length) return;
+            const item = currentItems.splice(index, 1)[0];
+            currentItems.splice(newIndex, 0, item);
+            const newItems = calculateStartTimes(currentItems, state.cultInfo.startTime);
+            handleStateUpdate({ ...state, items: newItems });
+        };
+
+        // ### ALTERADO: Lógica de 'handleSavePreset' mais robusta e com logs ###
+        const handleSavePreset = async () => {
+            const presetName = prompt("Digite um nome para este preset:", "Modelo de Culto Padrão");
+
+            // Se o usuário clicar em "Cancelar", prompt retorna null. Saímos da função.
+            if (presetName === null) {
+                console.log("Operação de salvar preset cancelada pelo usuário.");
+                return;
+            }
+
+            // Se o nome estiver em branco (apenas espaços), avisa o usuário.
+            if (!presetName.trim()) {
+                alert("O nome do preset não pode estar em branco.");
+                return;
+            }
+
+            // Prossegue apenas se a referência da coleção for válida.
+            if (presetsCollectionRef) {
+                console.log(`Tentando salvar preset com nome: "${presetName}"`);
+                try {
+                    const presetData = {
+                        name: presetName.trim(),
+                        savedAt: new Date().toISOString(),
+                        items: state.items,
+                        cultInfo: state.cultInfo,
+                    };
+                    await firestore.addDoc(presetsCollectionRef, presetData);
+                    
+                    console.log("Preset salvo com sucesso! Buscando lista atualizada...");
+                    alert(`Preset "${presetName.trim()}" salvo com sucesso!`);
+                    fetchPresets(); // Atualiza a lista de presets na tela
+                } catch (error) {
+                    console.error("Ocorreu um erro na função addDoc:", error);
+                    alert(`Erro ao salvar o preset: ${error.message}`);
+                }
+            } else {
+                console.error("A referência para a coleção de presets é inválida.");
+                alert("Erro: Não foi possível conectar à coleção de presets.");
+            }
+        };
+
+        // ... (resto do código, handleLoadPreset, import/export, componentes, etc. permanece igual)
+        const handleLoadPreset = (presetId) => {
+            if (!confirm("Isso substituirá a ordem de culto atual. Deseja continuar?")) return;
+            const preset = presets.find(p => p.id === presetId);
+            if (preset) {
+                const newItems = calculateStartTimes(preset.items, preset.cultInfo.startTime);
+                handleStateUpdate({ ...state, items: newItems, cultInfo: preset.cultInfo });
+            }
+        };
+        const handleDownloadExcelTemplate = () => {
+            const data = [{ title: "Música de Abertura", duration: 10, type: "música", responsible: "Ministério de Louvor", description: "Usar playback e projeção com letra." }];
+            const worksheet = XLSX.utils.json_to_sheet(data);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Ordem de Culto");
+            worksheet["!cols"] = [ { wch: 30 }, { wch: 10 }, { wch: 15 }, { wch: 25 }, { wch: 50 }, ];
+            XLSX.writeFile(workbook, "modelo_ordem_de_culto.xlsx");
+        };
+        const handleImportExcel = (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                if (!confirm("Isso substituirá a ordem de culto atual com os dados do arquivo. Deseja continuar?")) { event.target.value = null; return; }
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = e.target.result;
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const sheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[sheetName];
+                        const json = XLSX.utils.sheet_to_json(worksheet);
+                        const newItemsFromExcel = json.map(row => ({ id: Date.now() + Math.random(), title: row.title || 'Sem Título', duration: parseInt(row.duration, 10) || 5, type: row.type || 'palavra', responsible: row.responsible || 'A definir', description: row.description || '', technical: { projection: '-', sound: '-', microphone: '-', lighting: '-', camera: '-' }, completed: false, actualDuration: null, }));
+                        const newItems = calculateStartTimes(newItemsFromExcel, state.cultInfo.startTime);
+                        handleStateUpdate({ ...state, items: newItems });
+                    } catch(error) {
+                        alert("Ocorreu um erro ao ler o arquivo Excel. Verifique se o formato está correto.");
+                        console.error("Erro no SheetJS:", error);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+                event.target.value = null;
+            }
+        };
+        if (isLoading) { return <div className="flex justify-center items-center h-screen bg-gray-100">Autenticando e Carregando...</div>; }
+        return (
+            <div className="min-h-screen bg-gray-100 p-4">
+                <div className="max-w-7xl mx-auto">
+                    <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
+                        <h1 className="text-3xl font-bold text-gray-800">Gestor de Culto</h1>
+                        <div className="flex items-center gap-2">
+                            {isSaving && <div className="text-sm text-gray-500 flex items-center gap-1"><icons.Server size={14}/> Salvando...</div>}
+                            <button onClick={() => setShowTechnical(!showTechnical)} className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-md flex items-center gap-2 text-sm"><icons.Monitor size={16} /> <span>Técnico</span></button>
+                            <button onClick={() => setMode(mode === 'planning' ? 'presentation' : 'planning')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center gap-2">
+                                {mode === 'planning' ? <icons.Play size={18}/> : <icons.Settings size={18}/>}
+                                <span>{mode === 'planning' ? 'Modo Ao Vivo' : 'Planejamento'}</span>
+                            </button>
+                        </div>
+                    </div>
+                    {mode === 'planning' ? (
+                        <PlanningView items={state.items} cultInfo={state.cultInfo} onCultInfoChange={handleCultInfoChange} showTechnical={showTechnical} onAddItem={addItem} onUpdateItem={updateItem} onDeleteItem={deleteItem} onMoveItem={moveItem} onSavePreset={handleSavePreset} onLoadPreset={handleLoadPreset} onDownloadTemplate={handleDownloadExcelTemplate} onImportClick={() => fileInputRef.current.click()} presets={presets} />
+                    ) : (
+                        <PresentationView state={state} onStateUpdate={handleStateUpdate} />
+                    )}
+                    <input type="file" accept=".xlsx, .xls" ref={fileInputRef} className="hidden-file-input" onChange={handleImportExcel} />
+                </div>
             </div>
         );
-
-        const PlanningView = ({ 
-            items, cultInfo, onCultInfoChange, showTechnical, onAddItem, onUpdateItem, onDeleteItem, onMoveItem,
-            onSavePreset, onLoadPreset, onDownloadTemplate, onImportClick, presets 
-        }) => {
-            return (
-                <>
-                    <div className="bg-white rounded-lg p-6 mb-6 shadow-sm">
-                        <h2 className="text-xl font-semibold mb-4">Informações do Culto</h2>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                            <InfoInput label="Data" type="text" value={cultInfo.date} onChange={e => onCultInfoChange('date', e.target.value)} />
-                            <InfoInput label="Coordenador" value={cultInfo.coordinator} onChange={e => onCultInfoChange('coordinator', e.target.value)} />
-                            <InfoInput label="Dirigente" value={cultInfo.leader} onChange={e => onCultInfoChange('leader', e.target.value)} />
-                            <InfoInput label="Louvor" value={cultInfo.worship} onChange={e => onCultInfoChange('worship', e.target.value)} />
-                            <InfoInput label="Pregador" value={cultInfo.preacher} onChange={e => onCultInfoChange('preacher', e.target.value)} />
-                            <div className="flex gap-2">
-                                <InfoInput label="Início" type="time" value={cultInfo.startTime} onChange={e => onCultInfoChange('startTime', e.target.value)} />
-                                <InfoInput label="Live" type="time" value={cultInfo.liveTime} onChange={e => onCultInfoChange('liveTime', e.target.value)} />
-                            </div>
-                        </div>
-                    </div>
-                    <div className="bg-white rounded-lg shadow-sm">
-                        <div className="p-4 border-b flex flex-wrap justify-between items-center gap-3">
-                            <h2 className="text-xl font-semibold">Ordem de Culto</h2>
-                            <div className="flex flex-wrap gap-2">
-                                <button onClick={onImportClick} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.UploadCloud size={16}/> Importar Excel</button>
-                                <button onClick={onDownloadTemplate} className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.DownloadCloud size={16}/> Baixar Modelo</button>
-                                <button onClick={onSavePreset} className="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.Save size={16}/> Salvar Preset</button>
-                                <select onChange={(e) => { if(e.target.value) onLoadPreset(e.target.value); e.target.value = ""; }} className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-md text-sm font-semibold" value="">
-                                    <option value="" disabled>Carregar Preset</option>
-                                    {presets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                </select>
-                                <button onClick={onAddItem} className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.Plus size={16}/> Adicionar Item</button>
-                            </div>
-                        </div>
-                        <div className="divide-y divide-gray-200">
-                            {items && items.map((item, index) => (
-                                <PlanningItem key={item.id} item={item} index={index} isFirst={index === 0} isLast={index === items.length - 1} showTechnical={showTechnical} onUpdate={onUpdateItem} onDelete={onDeleteItem} onMove={onMoveItem} />
-                            ))}
-                            {(!items || items.length === 0) && <p className="p-4 text-gray-500">Nenhum item na ordem de culto. Adicione um para começar ou importe um arquivo Excel.</p>}
-                        </div>
-                    </div>
-                </>
-            );
-        };
-
-        const PlanningItem = ({ item, index, isFirst, isLast, showTechnical, onUpdate, onDelete, onMove }) => {
-          const handleFieldChange = (field, value) => onUpdate(item.id, { [field]: value });
-          const handleTechFieldChange = (field, value) => onUpdate(item.id, { technical: { ...item.technical, [field]: value } });
-          const getTypeColor = type => ({'música': 'bg-blue-100 text-blue-800', 'oração': 'bg-purple-100 text-purple-800', 'palavra': 'bg-green-100 text-green-800', 'técnico': 'bg-orange-100 text-orange-800'})[type] || 'bg-gray-100 text-gray-800';
-          
-          return (
-            <div className="p-4 hover:bg-gray-50">
-              <div className="flex items-start gap-3">
-                <div className="flex flex-col items-center pt-1">
-                  <button onClick={() => onMove(index, -1)} disabled={isFirst} className="disabled:opacity-30"><icons.ChevronUp size={20} /></button>
-                  <span className="font-mono text-lg font-bold text-gray-400">{index + 1}</span>
-                  <button onClick={() => onMove(index, 1)} disabled={isLast} className="disabled:opacity-30"><icons.ChevronDown size={20} /></button>
-                </div>
-                <div className="flex-1">
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-x-4 gap-y-2">
-                    <input type="text" value={item.title} onChange={e => handleFieldChange('title', e.target.value)} placeholder="Título" className="md:col-span-2 border-gray-300 rounded-md shadow-sm text-lg font-semibold"/>
-                    <input type="text" value={item.responsible} onChange={e => handleFieldChange('responsible', e.target.value)} placeholder="Responsável" className="border-gray-300 rounded-md shadow-sm"/>
-                    <select value={item.type} onChange={e => handleFieldChange('type', e.target.value)} className={`border-gray-300 rounded-md shadow-sm font-medium ${getTypeColor(item.type)}`}>
-                      <option value="palavra">Palavra</option> <option value="música">Música</option> <option value="oração">Oração</option> <option value="técnico">Técnico</option>
-                    </select>
-                    <div className="flex items-center gap-2">
-                      <input type="number" value={item.duration} onChange={e => handleFieldChange('duration', parseInt(e.target.value, 10) || 0)} className="w-20 border-gray-300 rounded-md shadow-sm"/>
-                      <span className="text-gray-600">min</span>
-                      <span className="font-mono text-gray-800 bg-gray-100 px-2 py-1 rounded-md">{item.startTime}</span>
-                    </div>
-                  </div>
-                  <textarea value={item.description} onChange={e => handleFieldChange('description', e.target.value)} placeholder="Descrição ou detalhes..." className="w-full mt-2 border-gray-300 rounded-md shadow-sm" rows="2"></textarea>
-                  {showTechnical && (
-                    <div className="mt-3 bg-gray-50 rounded p-3">
-                      <h4 className="font-semibold text-sm mb-2">Detalhes Técnicos</h4>
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
-                        <InfoInput placeholder="Projeção" value={item.technical.projection} onChange={e => handleTechFieldChange('projection', e.target.value)} />
-                        <InfoInput placeholder="Som" value={item.technical.sound} onChange={e => handleTechFieldChange('sound', e.target.value)} />
-                        <InfoInput placeholder="Microfone" value={item.technical.microphone} onChange={e => handleTechFieldChange('microphone', e.target.value)} />
-                        <InfoInput placeholder="Iluminação" value={item.technical.lighting} onChange={e => handleTechFieldChange('lighting', e.target.value)} />
-                        <InfoInput placeholder="Câmera" value={item.technical.camera} onChange={e => handleTechFieldChange('camera', e.target.value)} />
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-col items-center pt-1">
-                  <button onClick={() => onDelete(item.id)} className="text-red-500 hover:text-red-700 p-1"><icons.Trash2 size={18} /></button>
-                </div>
-              </div>
-            </div>
-          )
-        };
-
-        const PresentationView = ({ state, onStateUpdate }) => {
-            const { items, cultInfo, liveState } = state;
-            const { currentItemIndex, isRunning, currentTime, actualStartTime } = liveState;
-            const currentItem = items && items[currentItemIndex];
-
-            useEffect(() => {
-                let interval;
-                if (isRunning) {
-                    interval = setInterval(() => {
-                        onStateUpdate(prevState => ({ ...prevState, liveState: { ...prevState.liveState, currentTime: prevState.liveState.currentTime + 1 } }));
-                    }, 1000);
-                }
-                return () => clearInterval(interval);
-            }, [isRunning, onStateUpdate]);
-
-            const formatTime = (seconds) => {
-                if (!seconds || seconds < 0) seconds = 0;
-                const mins = Math.floor(seconds / 60);
-                const secs = seconds % 60;
-                return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-            };
-
-            const plannedDurationInSeconds = (currentItem?.duration || 0) * 60;
-            const isOvertime = currentTime > plannedDurationInSeconds;
-            const progressPercentage = plannedDurationInSeconds > 0 ? Math.min((currentTime / plannedDurationInSeconds) * 100, 100) : 0;
-            
-            const balance = useMemo(() => {
-                if (!items) return 0;
-                let initialDelayInMinutes = 0;
-                if (actualStartTime && cultInfo.startTime) {
-                    const plannedStart = new Date(`1970-01-01T${cultInfo.startTime}:00`);
-                    const actualStart = new Date(actualStartTime);
-                    const actualStartOnSameDay = new Date(`1970-01-01T${actualStart.toTimeString().slice(0,8)}`);
-                    if (!isNaN(plannedStart) && !isNaN(actualStartOnSameDay)) {
-                        initialDelayInMinutes = (actualStartOnSameDay - plannedStart) / (1000 * 60);
-                    }
-                }
-                const itemsBalance = items
-                    .slice(0, currentItemIndex)
-                    .reduce((acc, item) => {
-                        if (!item.completed) return acc;
-                        const planned = item.duration || 0;
-                        const actual = item.actualDuration != null ? item.actualDuration / 60 : planned;
-                        return acc + (planned - actual);
-                    }, 0);
-                return itemsBalance - initialDelayInMinutes;
-            }, [items, currentItemIndex, actualStartTime, cultInfo.startTime]);
-
-            const handleToggleTimer = () => {
-                onStateUpdate(prevState => {
-                    const newLiveState = { ...prevState.liveState, isRunning: !prevState.liveState.isRunning };
-                    if (newLiveState.isRunning && prevState.liveState.currentItemIndex === 0 && !prevState.liveState.actualStartTime) {
-                        newLiveState.actualStartTime = new Date().toISOString();
-                    }
-                    return { ...prevState, liveState: newLiveState };
-                });
-            };
-
-            const handleResetTimer = () => {
-                onStateUpdate(prevState => ({ ...prevState, liveState: { ...prevState.liveState, currentTime: 0 } }));
-            };
-
-            const handleNext = () => {
-                if (!items || currentItemIndex >= items.length - 1) return;
-                onStateUpdate(prevState => {
-                    const newItems = prevState.items.map((item, index) => 
-                        index === prevState.liveState.currentItemIndex ? { ...item, completed: true, actualDuration: prevState.liveState.currentTime } : item
-                    );
-                    return { 
-                        ...prevState, 
-                        items: newItems,
-                        liveState: { ...prevState.liveState, currentItemIndex: prevState.liveState.currentItemIndex + 1, currentTime: 0, isRunning: true }
-                    };
-                });
-            };
-
-            const handlePrevious = () => {
-                if (currentItemIndex <= 0) return;
-                onStateUpdate(prevState => ({
-                    ...prevState,
-                    liveState: { ...prevState.liveState, currentItemIndex: prevState.liveState.currentItemIndex - 1, currentTime: 0 }
-                }));
-            };
-
-            if (!currentItem) {
-                return <div className="text-center p-10 bg-white rounded-lg shadow-md"><h2 className="text-2xl font-bold">Culto Finalizado ou sem itens.</h2></div>
-            }
-
-            return (
-                <div className="space-y-4">
-                    <div className="bg-gray-800 text-white rounded-lg p-6 shadow-xl">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <h2 className="text-3xl font-bold">{currentItem.title}</h2>
-                                <p className="text-lg text-blue-300">{currentItem.responsible}</p>
-                            </div>
-                            <div className="text-right">
-                                <div className="text-sm text-gray-400">Horário Previsto</div>
-                                <div className="text-2xl font-mono">{currentItem.startTime}</div>
-                            </div>
-                        </div>
-                        <div className="my-6 text-center">
-                            <div className={`text-7xl font-mono ${isOvertime ? 'text-red-400' : 'text-green-400'}`}>
-                                {formatTime(currentTime)}
-                            </div>
-                            <div className="text-gray-400">Planejado: {formatTime(plannedDurationInSeconds)}</div>
-                        </div>
-                        <div className="w-full bg-gray-700 rounded-full h-4 mb-6">
-                            <div className={`h-4 rounded-full transition-all duration-500 ${isOvertime ? 'bg-red-500' : 'bg-green-500'}`} style={{ width: `${progressPercentage}%` }}/>
-                        </div>
-                        <div className="flex justify-center flex-wrap gap-4">
-                            <button onClick={handlePrevious} className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg disabled:opacity-50" disabled={currentItemIndex === 0}>Anterior</button>
-                            <button onClick={handleToggleTimer} className={`px-6 py-2 rounded-lg flex items-center gap-2 text-lg ${isRunning ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600'}`}>
-                                {isRunning ? <icons.Pause size={20}/> : <icons.Play size={20}/>}
-                                {isRunning ? 'Pausar' : 'Iniciar'}
-                            </button>
-                            <button onClick={handleResetTimer} className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg flex items-center gap-2"><icons.RotateCcw size={18}/> Reset</button>
-                            <button onClick={handleNext} className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg disabled:opacity-50" disabled={!items || currentItemIndex >= items.length - 1}>Próximo</button>
-                        </div>
-                    </div>
-                    <div className="bg-gray-800 rounded-lg p-4">
-                        <div className="flex justify-between items-center mb-3">
-                            <h3 className="font-semibold text-white">Linha do Tempo</h3>
-                            <div className={`text-sm font-semibold px-3 py-1 rounded-full ${balance >= 0 ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
-                                Balanço: {balance >= 0 ? '+' : ''}{Math.round(balance)} min
-                            </div>
-                        </div>
-                        <div className="flex overflow-x-auto gap-3 pb-2">
-                          {items && items.map((item, index) => (
-                            <div key={item.id} className={`flex-shrink-0 w-48 p-3 rounded-lg border-2 transition-all ${index === currentItemIndex ? 'border-blue-500 bg-gray-700' : 'border-gray-600 bg-gray-700/50'}`}>
-                              <div className="flex justify-between items-start">
-                                <span className="text-xs font-mono text-gray-300">{item.startTime}</span>
-                                {item.completed && <icons.CheckCircle size={16} className="text-green-400"/>}
-                              </div>
-                              <h4 className={`font-semibold text-sm mb-1 ${item.completed ? 'text-gray-400 line-through' : 'text-white'}`}>{item.title}</h4>
-                              <div className="text-xs text-gray-400 flex items-center gap-1"><icons.Clock size={12} /> {item.duration} min</div>
-                            </div>
-                          ))}
-                        </div>
-                    </div>
-                </div>
-            );
-        };
+    };
+    const InfoInput = ({ label, ...props }) => ( <div> <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label> <input {...props} className="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" /> </div> );
+    const PlanningView = ({ items, cultInfo, onCultInfoChange, showTechnical, onAddItem, onUpdateItem, onDeleteItem, onMoveItem, onSavePreset, onLoadPreset, onDownloadTemplate, onImportClick, presets }) => {
+        return ( <> <div className="bg-white rounded-lg p-6 mb-6 shadow-sm"> <h2 className="text-xl font-semibold mb-4">Informações do Culto</h2> <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4"> <InfoInput label="Data" type="text" value={cultInfo.date} onChange={e => onCultInfoChange('date', e.target.value)} /> <InfoInput label="Coordenador" value={cultInfo.coordinator} onChange={e => onCultInfoChange('coordinator', e.target.value)} /> <InfoInput label="Dirigente" value={cultInfo.leader} onChange={e => onCultInfoChange('leader', e.target.value)} /> <InfoInput label="Louvor" value={cultInfo.worship} onChange={e => onCultInfoChange('worship', e.target.value)} /> <InfoInput label="Pregador" value={cultInfo.preacher} onChange={e => onCultInfoChange('preacher', e.target.value)} /> <div className="flex gap-2"> <InfoInput label="Início" type="time" value={cultInfo.startTime} onChange={e => onCultInfoChange('startTime', e.target.value)} /> <InfoInput label="Live" type="time" value={cultInfo.liveTime} onChange={e => onCultInfoChange('liveTime', e.target.value)} /> </div> </div> </div> <div className="bg-white rounded-lg shadow-sm"> <div className="p-4 border-b flex flex-wrap justify-between items-center gap-3"> <h2 className="text-xl font-semibold">Ordem de Culto</h2> <div className="flex flex-wrap gap-2"> <button onClick={onImportClick} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.UploadCloud size={16}/> Importar Excel</button> <button onClick={onDownloadTemplate} className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.DownloadCloud size={16}/> Baixar Modelo</button> <button onClick={onSavePreset} className="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.Save size={16}/> Salvar Preset</button> <select onChange={(e) => { if(e.target.value) onLoadPreset(e.target.value); e.target.value = ""; }} className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-md text-sm font-semibold" value=""> <option value="" disabled>Carregar Preset</option> {presets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)} </select> <button onClick={onAddItem} className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.Plus size={16}/> Adicionar Item</button> </div> </div> <div className="divide-y divide-gray-200"> {items && items.map((item, index) => ( <PlanningItem key={item.id} item={item} index={index} isFirst={index === 0} isLast={index === items.length - 1} showTechnical={showTechnical} onUpdate={onUpdateItem} onDelete={onDeleteItem} onMove={onMoveItem} /> ))} {(!items || items.length === 0) && <p className="p-4 text-gray-500">Nenhum item na ordem de culto. Adicione um para começar ou importe um arquivo Excel.</p>} </div> </div> </> );
+    };
+    const PlanningItem = ({ item, index, isFirst, isLast, showTechnical, onUpdate, onDelete, onMove }) => { const handleFieldChange = (field, value) => onUpdate(item.id, { [field]: value }); const handleTechFieldChange = (field, value) => onUpdate(item.id, { technical: { ...item.technical, [field]: value } }); const getTypeColor = type => ({'música': 'bg-blue-100 text-blue-800', 'oração': 'bg-purple-100 text-purple-800', 'palavra': 'bg-green-100 text-green-800', 'técnico': 'bg-orange-100 text-orange-800'})[type] || 'bg-gray-100 text-gray-800'; return ( <div className="p-4 hover:bg-gray-50"> <div className="flex items-start gap-3"> <div className="flex flex-col items-center pt-1"> <button onClick={() => onMove(index, -1)} disabled={isFirst} className="disabled:opacity-30"><icons.ChevronUp size={20} /></button> <span className="font-mono text-lg font-bold text-gray-400">{index + 1}</span> <button onClick={() => onMove(index, 1)} disabled={isLast} className="disabled:opacity-30"><icons.ChevronDown size={20} /></button> </div> <div className="flex-1"> <div className="grid grid-cols-1 md:grid-cols-5 gap-x-4 gap-y-2"> <input type="text" value={item.title} onChange={e => handleFieldChange('title', e.target.value)} placeholder="Título" className="md:col-span-2 border-gray-300 rounded-md shadow-sm text-lg font-semibold"/> <input type="text" value={item.responsible} onChange={e => handleFieldChange('responsible', e.target.value)} placeholder="Responsável" className="border-gray-300 rounded-md shadow-sm"/> <select value={item.type} onChange={e => handleFieldChange('type', e.target.value)} className={`border-gray-300 rounded-md shadow-sm font-medium ${getTypeColor(item.type)}`}> <option value="palavra">Palavra</option> <option value="música">Música</option> <option value="oração">Oração</option> <option value="técnico">Técnico</option> </select> <div className="flex items-center gap-2"> <input type="number" value={item.duration} onChange={e => handleFieldChange('duration', parseInt(e.target.value, 10) || 0)} className="w-20 border-gray-300 rounded-md shadow-sm"/> <span className="text-gray-600">min</span> <span className="font-mono text-gray-800 bg-gray-100 px-2 py-1 rounded-md">{item.startTime}</span> </div> </div> <textarea value={item.description} onChange={e => handleFieldChange('description', e.target.value)} placeholder="Descrição ou detalhes..." className="w-full mt-2 border-gray-300 rounded-md shadow-sm" rows="2"></textarea> {showTechnical && ( <div className="mt-3 bg-gray-50 rounded p-3"> <h4 className="font-semibold text-sm mb-2">Detalhes Técnicos</h4> <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm"> <InfoInput placeholder="Projeção" value={item.technical.projection} onChange={e => handleTechFieldChange('projection', e.target.value)} /> <InfoInput placeholder="Som" value={item.technical.sound} onChange={e => handleTechFieldChange('sound', e.target.value)} /> <InfoInput placeholder="Microfone" value={item.technical.microphone} onChange={e => handleTechFieldChange('microphone', e.target.value)} /> <InfoInput placeholder="Iluminação" value={item.technical.lighting} onChange={e => handleTechFieldChange('lighting', e.target.value)} /> <InfoInput placeholder="Câmera" value={item.technical.camera} onChange={e => handleTechFieldChange('camera', e.target.value)} /> </div> </div> )} </div> <div className="flex flex-col items-center pt-1"> <button onClick={() => onDelete(item.id)} className="text-red-500 hover:text-red-700 p-1"><icons.Trash2 size={18} /></button> </div> </div> </div> ) };
+    const PresentationView = ({ state, onStateUpdate }) => { const { items, cultInfo, liveState } = state; const { currentItemIndex, isRunning, currentTime, actualStartTime } = liveState; const currentItem = items && items[currentItemIndex]; useEffect(() => { let interval; if (isRunning) { interval = setInterval(() => { onStateUpdate(prevState => ({ ...prevState, liveState: { ...prevState.liveState, currentTime: prevState.liveState.currentTime + 1 } })); }, 1000); } return () => clearInterval(interval); }, [isRunning, onStateUpdate]); const formatTime = (seconds) => { if (!seconds || seconds < 0) seconds = 0; const mins = Math.floor(seconds / 60); const secs = seconds % 60; return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`; }; const plannedDurationInSeconds = (currentItem?.duration || 0) * 60; const isOvertime = currentTime > plannedDurationInSeconds; const progressPercentage = plannedDurationInSeconds > 0 ? Math.min((currentTime / plannedDurationInSeconds) * 100, 100) : 0; const balance = useMemo(() => { if (!items) return 0; let initialDelayInMinutes = 0; if (actualStartTime && cultInfo.startTime) { const plannedStart = new Date(`1970-01-01T${cultInfo.startTime}:00`); const actualStart = new Date(actualStartTime); const actualStartOnSameDay = new Date(`1970-01-01T${actualStart.toTimeString().slice(0,8)}`); if (!isNaN(plannedStart) && !isNaN(actualStartOnSameDay)) { initialDelayInMinutes = (actualStartOnSameDay - plannedStart) / (1000 * 60); } } const itemsBalance = items .slice(0, currentItemIndex) .reduce((acc, item) => { if (!item.completed) return acc; const planned = item.duration || 0; const actual = item.actualDuration != null ? item.actualDuration / 60 : planned; return acc + (planned - actual); }, 0); return itemsBalance - initialDelayInMinutes; }, [items, currentItemIndex, actualStartTime, cultInfo.startTime]); const handleToggleTimer = () => { onStateUpdate(prevState => { const newLiveState = { ...prevState.liveState, isRunning: !prevState.liveState.isRunning }; if (newLiveState.isRunning && prevState.liveState.currentItemIndex === 0 && !prevState.liveState.actualStartTime) { newLiveState.actualStartTime = new Date().toISOString(); } return { ...prevState, liveState: newLiveState }; }); }; const handleResetTimer = () => { onStateUpdate(prevState => ({ ...prevState, liveState: { ...prevState.liveState, currentTime: 0 } })); }; const handleNext = () => { if (!items || currentItemIndex >= items.length - 1) return; onStateUpdate(prevState => { const newItems = prevState.items.map((item, index) => index === prevState.liveState.currentItemIndex ? { ...item, completed: true, actualDuration: prevState.liveState.currentTime } : item ); return { ...prevState, items: newItems, liveState: { ...prevState.liveState, currentItemIndex: prevState.liveState.currentItemIndex + 1, currentTime: 0, isRunning: true } }; }); }; const handlePrevious = () => { if (currentItemIndex <= 0) return; onStateUpdate(prevState => ({ ...prevState, liveState: { ...prevState.liveState, currentItemIndex: prevState.liveState.currentItemIndex - 1, currentTime: 0 } })); }; if (!currentItem) { return <div className="text-center p-10 bg-white rounded-lg shadow-md"><h2 className="text-2xl font-bold">Culto Finalizado ou sem itens.</h2></div> } return ( <div className="space-y-4"> <div className="bg-gray-800 text-white rounded-lg p-6 shadow-xl"> <div className="flex justify-between items-start"> <div> <h2 className="text-3xl font-bold">{currentItem.title}</h2> <p className="text-lg text-blue-300">{currentItem.responsible}</p> </div> <div className="text-right"> <div className="text-sm text-gray-400">Horário Previsto</div> <div className="text-2xl font-mono">{currentItem.startTime}</div> </div> </div> <div className="my-6 text-center"> <div className={`text-7xl font-mono ${isOvertime ? 'text-red-400' : 'text-green-400'}`}> {formatTime(currentTime)} </div> <div className="text-gray-400">Planejado: {formatTime(plannedDurationInSeconds)}</div> </div> <div className="w-full bg-gray-700 rounded-full h-4 mb-6"> <div className={`h-4 rounded-full transition-all duration-500 ${isOvertime ? 'bg-red-500' : 'bg-green-500'}`} style={{ width: `${progressPercentage}%` }}/> </div> <div className="flex justify-center flex-wrap gap-4"> <button onClick={handlePrevious} className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg disabled:opacity-50" disabled={currentItemIndex === 0}>Anterior</button> <button onClick={handleToggleTimer} className={`px-6 py-2 rounded-lg flex items-center gap-2 text-lg ${isRunning ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600'}`}> {isRunning ? <icons.Pause size={20}/> : <icons.Play size={20}/>} {isRunning ? 'Pausar' : 'Iniciar'} </button> <button onClick={handleResetTimer} className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg flex items-center gap-2"><icons.RotateCcw size={18}/> Reset</button> <button onClick={handleNext} className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg disabled:opacity-50" disabled={!items || currentItemIndex >= items.length - 1}>Próximo</button> </div> </div> <div className="bg-gray-800 rounded-lg p-4"> <div className="flex justify-between items-center mb-3"> <h3 className="font-semibold text-white">Linha do Tempo</h3> <div className={`text-sm font-semibold px-3 py-1 rounded-full ${balance >= 0 ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}> Balanço: {balance >= 0 ? '+' : ''}{Math.round(balance)} min </div> </div> <div className="flex overflow-x-auto gap-3 pb-2"> {items && items.map((item, index) => ( <div key={item.id} className={`flex-shrink-0 w-48 p-3 rounded-lg border-2 transition-all ${index === currentItemIndex ? 'border-blue-500 bg-gray-700' : 'border-gray-600 bg-gray-700/50'}`}> <div className="flex justify-between items-start"> <span className="text-xs font-mono text-gray-300">{item.startTime}</span> {item.completed && <icons.CheckCircle size={16} className="text-green-400"/>} </div> <h4 className={`font-semibold text-sm mb-1 ${item.completed ? 'text-gray-400 line-through' : 'text-white'}`}>{item.title}</h4> <div className="text-xs text-gray-400 flex items-center gap-1"><icons.Clock size={12} /> {item.duration} min</div> </div> ))} </div> </div> </div> ); };
     
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<React.StrictMode><WorshipOrderControl /></React.StrictMode>);
-    </script>
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<React.StrictMode><WorshipOrderControl /></React.StrictMode>);
+</script>
+</body>
+</html>
 </body>
 </html>
