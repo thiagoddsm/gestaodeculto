@@ -112,7 +112,9 @@
                     projecao: 'A definir',
                     iluminacao: 'A definir',
                     transmissao: 'A definir',
-                    pregador: 'A definir'
+                    pregador: 'A definir',
+                    // ### ADICIONADO: startTime de volta ao estado inicial ###
+                    startTime: '19:00'
                 },
                 liveState: {
                     currentItemIndex: 0, isRunning: false, currentTime: 0, actualStartTime: null,
@@ -196,9 +198,15 @@
                 });
             };
 
+            // ### ALTERADO: Lógica para recalcular horários ao mudar o startTime ###
             const handleCultInfoChange = (field, value) => {
                 const newCultInfo = { ...state.cultInfo, [field]: value };
-                handleStateUpdate({ ...state, cultInfo: newCultInfo });
+                if (field === 'startTime') {
+                    const newItems = calculateStartTimes(state.items, value);
+                    handleStateUpdate({ ...state, cultInfo: newCultInfo, items: newItems });
+                } else {
+                    handleStateUpdate({ ...state, cultInfo: newCultInfo });
+                }
             };
 
             const addItem = () => {
@@ -374,13 +382,14 @@
                             <InfoInput label="Data" type="text" value={cultInfo.date} onChange={e => onCultInfoChange('date', e.target.value)} />
                             <InfoInput label="Coordenador Técnico" value={cultInfo.coordenadorTecnico} onChange={e => onCultInfoChange('coordenadorTecnico', e.target.value)} />
                             <InfoInput label="Staff" value={cultInfo.staff} onChange={e => onCultInfoChange('staff', e.target.value)} />
-                            {/* ### ALTERADO: Label "Lead" ### */}
                             <InfoInput label="Lead" value={cultInfo.lead} onChange={e => onCultInfoChange('lead', e.target.value)} />
                             <InfoInput label="Som" value={cultInfo.som} onChange={e => onCultInfoChange('som', e.target.value)} />
                             <InfoInput label="Projeção" value={cultInfo.projecao} onChange={e => onCultInfoChange('projecao', e.target.value)} />
                             <InfoInput label="Iluminação" value={cultInfo.iluminacao} onChange={e => onCultInfoChange('iluminacao', e.target.value)} />
                             <InfoInput label="Transmissão" value={cultInfo.transmissao} onChange={e => onCultInfoChange('transmissao', e.target.value)} />
                             <InfoInput label="Pregador" value={cultInfo.pregador} onChange={e => onCultInfoChange('pregador', e.target.value)} />
+                            {/* ### ADICIONADO: Campo de Início do Culto de volta ### */}
+                            <InfoInput label="Início do Culto" type="time" value={cultInfo.startTime} onChange={e => onCultInfoChange('startTime', e.target.value)} />
                         </div>
                     </div>
                     <div className="bg-white rounded-lg shadow-sm">
@@ -421,7 +430,6 @@
           return ( <div className="p-4 hover:bg-gray-50"> <div className="flex items-start gap-3"> <div className="flex flex-col items-center pt-1"> <button onClick={() => onMove(index, -1)} disabled={isFirst} className="disabled:opacity-30"><icons.ChevronUp size={20} /></button> <span className="font-mono text-lg font-bold text-gray-400">{index + 1}</span> <button onClick={() => onMove(index, 1)} disabled={isLast} className="disabled:opacity-30"><icons.ChevronDown size={20} /></button> </div> <div className="flex-1"> <div className="grid grid-cols-1 md:grid-cols-5 gap-x-4 gap-y-2"> <input type="text" value={item.title} onChange={e => handleFieldChange('title', e.target.value)} placeholder="Título" className="md:col-span-2 border-gray-300 rounded-md shadow-sm text-lg font-semibold"/> <input type="text" value={item.responsible} onChange={e => handleFieldChange('responsible', e.target.value)} placeholder="Responsável" className="border-gray-300 rounded-md shadow-sm"/> <select value={item.type} onChange={e => handleFieldChange('type', e.target.value)} className={`border-gray-300 rounded-md shadow-sm font-medium ${getTypeColor(item.type)}`}> <option value="palavra">Palavra</option> <option value="música">Música</option> <option value="oração">Oração</option> <option value="técnico">Técnico</option> </select> <div className="flex items-center gap-2"> <input type="number" value={item.duration} onChange={e => handleFieldChange('duration', parseInt(e.target.value, 10) || 0)} className="w-20 border-gray-300 rounded-md shadow-sm"/> <span className="text-gray-600">min</span> <span className="font-mono text-gray-800 bg-gray-100 px-2 py-1 rounded-md">{item.startTime}</span> </div> </div> <textarea value={item.description} onChange={e => handleFieldChange('description', e.target.value)} placeholder="Descrição ou detalhes..." className="w-full mt-2 border-gray-300 rounded-md shadow-sm" rows="2"></textarea> {showTechnical && ( <div className="mt-3 bg-gray-50 rounded p-3"> <h4 className="font-semibold text-sm mb-2">Detalhes Técnicos</h4> <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm"> <InfoInput placeholder="Projeção" value={item.technical.projection} onChange={e => handleTechFieldChange('projection', e.target.value)} /> <InfoInput placeholder="Som" value={item.technical.sound} onChange={e => handleTechFieldChange('sound', e.target.value)} /> <InfoInput placeholder="Microfone" value={item.technical.microphone} onChange={e => handleTechFieldChange('microphone', e.target.value)} /> <InfoInput placeholder="Iluminação" value={item.technical.lighting} onChange={e => handleTechFieldChange('lighting', e.target.value)} /> <InfoInput placeholder="Câmera" value={item.technical.camera} onChange={e => handleTechFieldChange('camera', e.target.value)} /> </div> </div> )} </div> <div className="flex flex-col items-center pt-1"> <button onClick={() => onDelete(item.id)} className="text-red-500 hover:text-red-700 p-1"><icons.Trash2 size={18} /></button> </div> </div> </div> )
         };
 
-        // ### NOVO: Componente para detalhes técnicos reutilizável ###
         const TechDetailsDisplay = ({ technical }) => {
             const techKeyTranslations = {
                 projection: 'Projeção',
@@ -458,7 +466,6 @@
             const { items, cultInfo, liveState } = state;
             const { currentItemIndex, isRunning, currentTime, actualStartTime } = liveState;
             const currentItem = items && items[currentItemIndex];
-            // ### NOVO: Lógica para pegar o próximo item ###
             const nextItem = items && items[currentItemIndex + 1];
 
             useEffect(() => {
@@ -585,7 +592,6 @@
                         </div>
                     </div>
 
-                    {/* ### NOVO: Card de preview "A Seguir" ### */}
                     {nextItem && (
                         <div className="bg-gray-700 text-white rounded-lg p-4 shadow-lg opacity-80">
                              <h3 className="font-semibold text-lg text-yellow-300 mb-2 flex items-center gap-2">
@@ -599,6 +605,7 @@
                                         <p className="text-sm text-gray-300 whitespace-pre-wrap">{nextItem.description}</p>
                                     </div>
                                 )}
+                                {/* ### ALTERADO: Detalhes técnicos no preview ### */}
                                 <TechDetailsDisplay technical={nextItem.technical} />
                             </div>
                         </div>
