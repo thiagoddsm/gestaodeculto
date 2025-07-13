@@ -155,6 +155,10 @@
             useEffect(() => {
                 if (!isAuthReady || !liveDocRef) { if(isAuthReady) setIsLoading(false); return; }
                 const unsubscribe = firestore.onSnapshot(liveDocRef, (docSnap) => {
+                    // ### CORREÇÃO: Ignora "ecos" de escritas locais ###
+                    if (docSnap.metadata.hasPendingWrites) {
+                        return;
+                    }
                     if (docSnap.exists()) {
                         const data = docSnap.data();
                         if (data.items && data.cultInfo && data.liveState) {
@@ -169,7 +173,7 @@
                     setIsLoading(false);
                 });
                 return () => unsubscribe();
-            }, [isAuthReady, liveDocRef]);
+            }, [isAuthReady, liveDocRef, saveStateToFirebase, state]);
 
             const fetchPresets = useCallback(async () => {
                 if (!presetsCollectionRef || !firestore) return;
@@ -183,10 +187,12 @@
             useEffect(() => { if(isAuthReady) { fetchPresets(); } }, [isAuthReady, fetchPresets]);
 
             const handleStateUpdate = useCallback((updater) => {
-                const newState = typeof updater === 'function' ? updater(state) : updater;
-                setState(newState);
-                saveStateToFirebase(newState);
-            }, [state, saveStateToFirebase]);
+                setState(currentState => {
+                    const newState = typeof updater === 'function' ? updater(currentState) : updater;
+                    saveStateToFirebase(newState);
+                    return newState;
+                });
+            }, [saveStateToFirebase]);
 
             if (isLoading || viewMode === null) {
                 return <div className="flex justify-center items-center h-screen bg-gray-100">Carregando...</div>;
@@ -411,7 +417,7 @@
             const techKeyTranslations = { projection: 'Projeção', sound: 'Som', microphone: 'Microfone', lighting: 'Iluminação', camera: 'Câmera' };
             const techDetails = technical ? Object.entries(technical).filter(([key, value]) => value && value !== '-') : [];
             if (techDetails.length === 0) return null;
-            return ( <div> <h4 className={`font-semibold ${colorClass} mb-1 flex items-center gap-2`}><icons.Settings size={16} /> Detalhes Técnicos</h4> <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-gray-300"> {techDetails.map(([key, value]) => ( <div key={key} className="flex items-center gap-2"> {key === 'projection' && <icons.Monitor size={14} />} {key === 'sound' && <icons.Volume2 size={14} />} {key === 'microphone' && <icons.Mic size={14} />} {key === 'lighting' && <icons.Lightbulb size={14} />} {key === 'camera' && <icons.Camera size={14} />} <span>{techKeyTranslations[key] || key}:</span> <span className="font-semibold text-white">{value}</span> </div> ))} </div> </div> );
+            return ( <div> <h4 className={`font-semibold ${colorClass} mb-1 flex items-center gap-2`}><icons.Settings size={16} /> Detalhes Técnicos</h4> <div className="flex flex-col space-y-1 text-sm text-gray-300"> {techDetails.map(([key, value]) => ( <div key={key} className="flex items-center gap-2"> {key === 'projection' && <icons.Monitor size={14} />} {key === 'sound' && <icons.Volume2 size={14} />} {key === 'microphone' && <icons.Mic size={14} />} {key === 'lighting' && <icons.Lightbulb size={14} />} {key === 'camera' && <icons.Camera size={14} />} <span>{techKeyTranslations[key] || key}:</span> <span className="font-semibold text-white">{value}</span> </div> ))} </div> </div> );
         };
 
         const PresentationView = ({ state, onStateUpdate, isReadOnly }) => {
