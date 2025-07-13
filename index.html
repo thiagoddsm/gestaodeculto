@@ -5,27 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestor de Culto Ao Vivo</title>
     
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     
-    <!-- React e Babel -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     
-    <!-- Firebase -->
     <script type="module">
+        // ALTERADO: Adicionamos mais funções do Firestore
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            apiKey: "SUA_API_KEY", // Substitua se não estiver no ambiente Canvas
+            apiKey: "SUA_API_KEY", 
             authDomain: "SEU_AUTH_DOMAIN",
             projectId: "SEU_PROJECT_ID",
             storageBucket: "SEU_STORAGE_BUCKET",
@@ -42,7 +41,8 @@
             window.db = db;
             window.auth = auth;
             window.appId = appId;
-            window.firestore = { doc, getDoc, setDoc, onSnapshot };
+            // ALTERADO: Exportamos mais funções para uso no React
+            window.firestore = { doc, getDoc, setDoc, onSnapshot, collection, getDocs, addDoc };
             window.firebaseAuth = { signInAnonymously, signInWithCustomToken };
         } catch (e) {
             console.error("Erro ao inicializar o Firebase: ", e);
@@ -53,6 +53,10 @@
     <style>
         body { font-family: 'Inter', sans-serif; }
         .font-mono { font-family: 'Roboto Mono', monospace; }
+        /* NOVO: Estilo para o input de arquivo escondido */
+        .hidden-file-input {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -63,9 +67,9 @@
     </div>
 
     <script type="text/babel">
-        const { useState, useEffect, useCallback, useMemo } = React;
+        const { useState, useEffect, useCallback, useMemo, useRef } = React;
 
-        // --- ÍCONES EMBUTIDOS COMO COMPONENTES SVG ---
+        // --- ÍCONES (sem alterações) ---
         const SvgIcon = ({ size = 24, className = '', children }) => (
           <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>
         );
@@ -79,13 +83,13 @@
           ChevronUp: (props) => <SvgIcon {...props}><polyline points="18 15 12 9 6 15"></polyline></SvgIcon>,
           ChevronDown: (props) => <SvgIcon {...props}><polyline points="6 9 12 15 18 9"></polyline></SvgIcon>,
           Trash2: (props) => <SvgIcon {...props}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></SvgIcon>,
-          Volume2: (props) => <SvgIcon {...props}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></SvgIcon>,
-          Mic: (props) => <SvgIcon {...props}><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></SvgIcon>,
-          Lightbulb: (props) => <SvgIcon {...props}><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M12 2a7 7 0 0 0-5 2.24"></path><path d="M12 2v6a2 2 0 0 1-2 2H8a2 2 0 0 0-2 2v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1a2 2 0 0 0-2-2h-2a2 2 0 0 1-2-2V2Z"></path></SvgIcon>,
-          Camera: (props) => <SvgIcon {...props}><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></SvgIcon>,
           CheckCircle: (props) => <SvgIcon {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></SvgIcon>,
           RotateCcw: (props) => <SvgIcon {...props}><path d="M3 2v6h6"></path><path d="M3 13a9 9 0 1 0 3-7.7L3 8"></path></SvgIcon>,
           Clock: (props) => <SvgIcon {...props}><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></SvgIcon>,
+          // NOVO: Ícones para as novas funcionalidades
+          UploadCloud: (props) => <SvgIcon {...props}><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></SvgIcon>,
+          DownloadCloud: (props) => <SvgIcon {...props}><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4 4 4-4"/></SvgIcon>,
+          Save: (props) => <SvgIcon {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></SvgIcon>,
         };
 
         // --- Componente Principal ---
@@ -98,10 +102,7 @@
                     startTime: '19:00', liveTime: '19:30'
                 },
                 liveState: {
-                    currentItemIndex: 0,
-                    isRunning: false,
-                    currentTime: 0,
-                    actualStartTime: null, // Novo campo para o início real
+                    currentItemIndex: 0, isRunning: false, currentTime: 0, actualStartTime: null,
                 }
             });
             const [isLoading, setIsLoading] = useState(true);
@@ -109,12 +110,14 @@
             const [isAuthReady, setIsAuthReady] = useState(false);
             const [mode, setMode] = useState('planning');
             const [showTechnical, setShowTechnical] = useState(true);
+            const [presets, setPresets] = useState([]); // NOVO: Estado para armazenar os presets
+            const fileInputRef = useRef(null); // NOVO: Ref para o input de arquivo
 
-            const db = window.db;
-            const appId = window.appId;
-            const firestore = window.firestore;
-            const docRef = db && firestore ? firestore.doc(db, "artifacts", appId, "public", "data", "worship-order", "live-state") : null;
+            const { db, appId, firestore } = window;
+            const liveDocRef = db && firestore ? firestore.doc(db, "artifacts", appId, "public", "data", "worship-order", "live-state") : null;
+            const presetsCollectionRef = db && firestore ? firestore.collection(db, "artifacts", appId, "public", "data", "worship-order", "presets") : null;
 
+            // Autenticação (sem alterações)
             useEffect(() => {
                 const { auth, firebaseAuth } = window;
                 if (!auth || !firebaseAuth) { console.error("Firebase Auth não inicializado."); return; }
@@ -134,21 +137,25 @@
                 authenticate();
             }, []);
             
+            // Salvar estado ao vivo
             const saveStateToFirebase = useCallback(async (newState) => {
-                if (!docRef) return;
+                if (!liveDocRef) return;
                 setIsSaving(true);
                 try {
-                    await firestore.setDoc(docRef, newState);
+                    // Converte o objeto Date para string para ser serializável no Firestore
+                    const serializableState = JSON.parse(JSON.stringify(newState));
+                    await firestore.setDoc(liveDocRef, serializableState);
                 } catch (error) {
                     console.error("Erro ao salvar no Firebase:", error);
                 } finally {
                     setTimeout(() => setIsSaving(false), 500);
                 }
-            }, [docRef, firestore]);
+            }, [liveDocRef, firestore]);
 
+            // Carregar estado ao vivo (listener)
             useEffect(() => {
-                if (!isAuthReady || !docRef) return;
-                const unsubscribe = firestore.onSnapshot(docRef, (docSnap) => {
+                if (!isAuthReady || !liveDocRef) return;
+                const unsubscribe = firestore.onSnapshot(liveDocRef, (docSnap) => {
                     if (docSnap.exists()) {
                         setState(docSnap.data());
                     } else {
@@ -160,7 +167,26 @@
                     setIsLoading(false);
                 });
                 return () => unsubscribe();
-            }, [isAuthReady, docRef]);
+            }, [isAuthReady, liveDocRef]);
+            
+            // NOVO: Carregar presets do Firebase ao montar o componente
+            const fetchPresets = useCallback(async () => {
+                if (!presetsCollectionRef) return;
+                try {
+                    const snapshot = await firestore.getDocs(presetsCollectionRef);
+                    const presetsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setPresets(presetsData);
+                } catch (error) {
+                    console.error("Erro ao carregar presets:", error);
+                }
+            }, [presetsCollectionRef, firestore]);
+
+            useEffect(() => {
+                if(isAuthReady) {
+                    fetchPresets();
+                }
+            }, [isAuthReady, fetchPresets]);
+
 
             const handleStateUpdate = (newState) => {
                 setState(newState);
@@ -221,6 +247,87 @@
                 const newItems = calculateStartTimes(currentItems, state.cultInfo.startTime);
                 handleStateUpdate({ ...state, items: newItems });
             };
+
+            // NOVO: Lógica para funcionalidades de Preset e CSV
+            const handleSavePreset = async () => {
+                const presetName = prompt("Digite um nome para este preset:", "Modelo de Culto Padrão");
+                if (presetName && presetsCollectionRef) {
+                    try {
+                        const presetData = {
+                            name: presetName,
+                            savedAt: new Date().toISOString(),
+                            items: state.items,
+                            cultInfo: state.cultInfo,
+                        };
+                        await firestore.addDoc(presetsCollectionRef, presetData);
+                        alert(`Preset "${presetName}" salvo com sucesso!`);
+                        fetchPresets(); // Atualiza a lista de presets
+                    } catch (error) {
+                        console.error("Erro ao salvar o preset:", error);
+                        alert("Ocorreu um erro ao salvar o preset.");
+                    }
+                }
+            };
+            
+            const handleLoadPreset = (presetId) => {
+                if (!confirm("Isso substituirá a ordem de culto atual. Deseja continuar?")) return;
+                const preset = presets.find(p => p.id === presetId);
+                if (preset) {
+                    const newItems = calculateStartTimes(preset.items, preset.cultInfo.startTime);
+                    handleStateUpdate({
+                        ...state,
+                        items: newItems,
+                        cultInfo: preset.cultInfo
+                    });
+                }
+            };
+
+            const handleDownloadTemplate = () => {
+                const header = "title,duration,type,responsible,description\n";
+                const example = "Música de Abertura,10,música,Ministério de Louvor,Usar playback e projeção com letra.\n";
+                const csvContent = "data:text/csv;charset=utf-8," + header + example;
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", "modelo_ordem_de_culto.csv");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            const handleImportCSV = (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    if (!confirm("Isso substituirá a ordem de culto atual com os dados do arquivo. Deseja continuar?")) {
+                        event.target.value = null; // Reseta o input
+                        return;
+                    }
+                    Papa.parse(file, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: (results) => {
+                            const newItemsFromCSV = results.data.map(row => ({
+                                id: Date.now() + Math.random(),
+                                title: row.title || 'Sem Título',
+                                duration: parseInt(row.duration, 10) || 5,
+                                type: row.type || 'palavra',
+                                responsible: row.responsible || 'A definir',
+                                description: row.description || '',
+                                technical: { projection: '-', sound: '-', microphone: '-', lighting: '-', camera: '-' },
+                                completed: false,
+                                actualDuration: null,
+                            }));
+                            const newItems = calculateStartTimes(newItemsFromCSV, state.cultInfo.startTime);
+                            handleStateUpdate({ ...state, items: newItems });
+                        },
+                        error: (error) => {
+                            alert("Ocorreu um erro ao ler o arquivo CSV.");
+                            console.error("Erro no PapaParse:", error);
+                        }
+                    });
+                    event.target.value = null; // Reseta o input para permitir o mesmo arquivo novamente
+                }
+            };
             
             if (isLoading) {
                 return <div className="flex justify-center items-center h-screen bg-gray-100">Autenticando e Carregando...</div>;
@@ -252,7 +359,13 @@
                                 onAddItem={addItem} 
                                 onUpdateItem={updateItem}
                                 onDeleteItem={deleteItem}
-                                onMoveItem={moveItem} 
+                                onMoveItem={moveItem}
+                                // NOVO: Passando props para as novas funcionalidades
+                                onSavePreset={handleSavePreset}
+                                onLoadPreset={handleLoadPreset}
+                                onDownloadTemplate={handleDownloadTemplate}
+                                onImportClick={() => fileInputRef.current.click()}
+                                presets={presets}
                             />
                         ) : (
                             <PresentationView 
@@ -260,6 +373,8 @@
                                 onStateUpdate={handleStateUpdate}
                             />
                         )}
+                        {/* NOVO: Input de arquivo escondido */}
+                        <input type="file" accept=".csv" ref={fileInputRef} className="hidden-file-input" onChange={handleImportCSV} />
                     </div>
                 </div>
             );
@@ -267,93 +382,108 @@
         
         const InfoInput = ({ label, ...props }) => (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-              <input {...props} className="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+                <input {...props} className="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" />
             </div>
         );
 
-        const PlanningView = ({ items, cultInfo, onCultInfoChange, showTechnical, onAddItem, onUpdateItem, onDeleteItem, onMoveItem }) => {
+        // ALTERADO: PlanningView agora tem os botões de import/export e presets
+        const PlanningView = ({ 
+            items, cultInfo, onCultInfoChange, showTechnical, onAddItem, onUpdateItem, onDeleteItem, onMoveItem,
+            onSavePreset, onLoadPreset, onDownloadTemplate, onImportClick, presets 
+        }) => {
             return (
                 <>
                     <div className="bg-white rounded-lg p-6 mb-6 shadow-sm">
-                      <h2 className="text-xl font-semibold mb-4">Informações do Culto</h2>
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                          <InfoInput label="Data" value={cultInfo.date} onChange={e => onCultInfoChange('date', e.target.value)} />
-                          <InfoInput label="Coordenador" value={cultInfo.coordinator} onChange={e => onCultInfoChange('coordinator', e.target.value)} />
-                          <InfoInput label="Dirigente" value={cultInfo.leader} onChange={e => onCultInfoChange('leader', e.target.value)} />
-                          <InfoInput label="Louvor" value={cultInfo.worship} onChange={e => onCultInfoChange('worship', e.target.value)} />
-                          <InfoInput label="Pregador" value={cultInfo.preacher} onChange={e => onCultInfoChange('preacher', e.target.value)} />
-                          <div className="flex gap-2">
-                            <InfoInput label="Início" type="time" value={cultInfo.startTime} onChange={e => onCultInfoChange('startTime', e.target.value)} />
-                            <InfoInput label="Live" type="time" value={cultInfo.liveTime} onChange={e => onCultInfoChange('liveTime', e.target.value)} />
-                          </div>
-                      </div>
+                        <h2 className="text-xl font-semibold mb-4">Informações do Culto</h2>
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                            <InfoInput label="Data" value={cultInfo.date} onChange={e => onCultInfoChange('date', e.target.value)} />
+                            <InfoInput label="Coordenador" value={cultInfo.coordinator} onChange={e => onCultInfoChange('coordinator', e.target.value)} />
+                            <InfoInput label="Dirigente" value={cultInfo.leader} onChange={e => onCultInfoChange('leader', e.target.value)} />
+                            <InfoInput label="Louvor" value={cultInfo.worship} onChange={e => onCultInfoChange('worship', e.target.value)} />
+                            <InfoInput label="Pregador" value={cultInfo.preacher} onChange={e => onCultInfoChange('preacher', e.target.value)} />
+                            <div className="flex gap-2">
+                                <InfoInput label="Início" type="time" value={cultInfo.startTime} onChange={e => onCultInfoChange('startTime', e.target.value)} />
+                                <InfoInput label="Live" type="time" value={cultInfo.liveTime} onChange={e => onCultInfoChange('liveTime', e.target.value)} />
+                            </div>
+                        </div>
                     </div>
                     <div className="bg-white rounded-lg shadow-sm">
-                      <div className="p-4 border-b flex justify-between items-center">
-                        <h2 className="text-xl font-semibold">Ordem de Culto</h2>
-                        <button onClick={onAddItem} className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.Plus size={16}/> Adicionar Item</button>
-                      </div>
-                      <div className="divide-y divide-gray-200">
-                        {items.map((item, index) => (
-                          <PlanningItem key={item.id} item={item} index={index} isFirst={index === 0} isLast={index === items.length - 1} showTechnical={showTechnical} onUpdate={onUpdateItem} onDelete={onDeleteItem} onMove={onMoveItem} />
-                        ))}
-                        {items.length === 0 && <p className="p-4 text-gray-500">Nenhum item na ordem de culto. Adicione um para começar.</p>}
-                      </div>
+                        <div className="p-4 border-b flex flex-wrap justify-between items-center gap-3">
+                            <h2 className="text-xl font-semibold">Ordem de Culto</h2>
+                            <div className="flex flex-wrap gap-2">
+                                {/* NOVO: Botões de funcionalidades */}
+                                <button onClick={onImportClick} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.UploadCloud size={16}/> Importar CSV</button>
+                                <button onClick={onDownloadTemplate} className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.DownloadCloud size={16}/> Baixar Modelo</button>
+                                <button onClick={onSavePreset} className="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.Save size={16}/> Salvar Preset</button>
+                                <select onChange={(e) => onLoadPreset(e.target.value)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-md text-sm font-semibold" defaultValue="">
+                                    <option value="" disabled>Carregar Preset</option>
+                                    {presets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                </select>
+                                <button onClick={onAddItem} className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.Plus size={16}/> Adicionar Item</button>
+                            </div>
+                        </div>
+                        <div className="divide-y divide-gray-200">
+                            {items.map((item, index) => (
+                                <PlanningItem key={item.id} item={item} index={index} isFirst={index === 0} isLast={index === items.length - 1} showTechnical={showTechnical} onUpdate={onUpdateItem} onDelete={onDeleteItem} onMove={onMoveItem} />
+                            ))}
+                            {items.length === 0 && <p className="p-4 text-gray-500">Nenhum item na ordem de culto. Adicione um para começar ou importe de um arquivo CSV.</p>}
+                        </div>
                     </div>
                 </>
             );
         };
 
+        // --- COMPONENTES PlanningItem e PresentationView (sem alterações significativas) ---
+        // (O código original para estes componentes pode ser mantido aqui)
         const PlanningItem = ({ item, index, isFirst, isLast, showTechnical, onUpdate, onDelete, onMove }) => {
-            const handleFieldChange = (field, value) => onUpdate(item.id, { [field]: value });
-            const handleTechFieldChange = (field, value) => onUpdate(item.id, { technical: { ...item.technical, [field]: value } });
-            const getTypeColor = type => ({'música': 'bg-blue-100 text-blue-800', 'oração': 'bg-purple-100 text-purple-800', 'palavra': 'bg-green-100 text-green-800', 'técnico': 'bg-orange-100 text-orange-800'})[type] || 'bg-gray-100 text-gray-800';
-            
-            return (
-                <div className="p-4 hover:bg-gray-50">
-                    <div className="flex items-start gap-3">
-                        <div className="flex flex-col items-center pt-1">
-                            <button onClick={() => onMove(index, -1)} disabled={isFirst} className="disabled:opacity-30"><icons.ChevronUp size={20} /></button>
-                            <span className="font-mono text-lg font-bold text-gray-400">{index + 1}</span>
-                            <button onClick={() => onMove(index, 1)} disabled={isLast} className="disabled:opacity-30"><icons.ChevronDown size={20} /></button>
-                        </div>
-                        <div className="flex-1">
-                            <div className="grid grid-cols-1 md:grid-cols-5 gap-x-4 gap-y-2">
-                                <input type="text" value={item.title} onChange={e => handleFieldChange('title', e.target.value)} placeholder="Título" className="md:col-span-2 border-gray-300 rounded-md shadow-sm text-lg font-semibold"/>
-                                <input type="text" value={item.responsible} onChange={e => handleFieldChange('responsible', e.target.value)} placeholder="Responsável" className="border-gray-300 rounded-md shadow-sm"/>
-                                <select value={item.type} onChange={e => handleFieldChange('type', e.target.value)} className={`border-gray-300 rounded-md shadow-sm font-medium ${getTypeColor(item.type)}`}>
-                                    <option value="palavra">Palavra</option> <option value="música">Música</option> <option value="oração">Oração</option> <option value="técnico">Técnico</option>
-                                </select>
-                                <div className="flex items-center gap-2">
-                                    <input type="number" value={item.duration} onChange={e => handleFieldChange('duration', parseInt(e.target.value, 10) || 0)} className="w-20 border-gray-300 rounded-md shadow-sm"/>
-                                    <span className="text-gray-600">min</span>
-                                    <span className="font-mono text-gray-800 bg-gray-100 px-2 py-1 rounded-md">{item.startTime}</span>
-                                </div>
-                            </div>
-                            <textarea value={item.description} onChange={e => handleFieldChange('description', e.target.value)} placeholder="Descrição ou detalhes..." className="w-full mt-2 border-gray-300 rounded-md shadow-sm" rows="2"></textarea>
-                            {showTechnical && (
-                                <div className="mt-3 bg-gray-50 rounded p-3">
-                                  <h4 className="font-semibold text-sm mb-2">Detalhes Técnicos</h4>
-                                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
-                                      <InfoInput placeholder="Projeção" value={item.technical.projection} onChange={e => handleTechFieldChange('projection', e.target.value)} />
-                                      <InfoInput placeholder="Som" value={item.technical.sound} onChange={e => handleTechFieldChange('sound', e.target.value)} />
-                                      <InfoInput placeholder="Microfone" value={item.technical.microphone} onChange={e => handleTechFieldChange('microphone', e.target.value)} />
-                                      <InfoInput placeholder="Iluminação" value={item.technical.lighting} onChange={e => handleTechFieldChange('lighting', e.target.value)} />
-                                      <InfoInput placeholder="Câmera" value={item.technical.camera} onChange={e => handleTechFieldChange('camera', e.target.value)} />
-                                  </div>
-                                </div>
-                            )}
-                        </div>
-                        <div className="flex flex-col items-center pt-1">
-                            <button onClick={() => onDelete(item.id)} className="text-red-500 hover:text-red-700 p-1"><icons.Trash2 size={18} /></button>
-                        </div>
-                    </div>
+          const handleFieldChange = (field, value) => onUpdate(item.id, { [field]: value });
+          const handleTechFieldChange = (field, value) => onUpdate(item.id, { technical: { ...item.technical, [field]: value } });
+          const getTypeColor = type => ({'música': 'bg-blue-100 text-blue-800', 'oração': 'bg-purple-100 text-purple-800', 'palavra': 'bg-green-100 text-green-800', 'técnico': 'bg-orange-100 text-orange-800'})[type] || 'bg-gray-100 text-gray-800';
+          
+          return (
+            <div className="p-4 hover:bg-gray-50">
+              <div className="flex items-start gap-3">
+                <div className="flex flex-col items-center pt-1">
+                  <button onClick={() => onMove(index, -1)} disabled={isFirst} className="disabled:opacity-30"><icons.ChevronUp size={20} /></button>
+                  <span className="font-mono text-lg font-bold text-gray-400">{index + 1}</span>
+                  <button onClick={() => onMove(index, 1)} disabled={isLast} className="disabled:opacity-30"><icons.ChevronDown size={20} /></button>
                 </div>
-            )
+                <div className="flex-1">
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-x-4 gap-y-2">
+                    <input type="text" value={item.title} onChange={e => handleFieldChange('title', e.target.value)} placeholder="Título" className="md:col-span-2 border-gray-300 rounded-md shadow-sm text-lg font-semibold"/>
+                    <input type="text" value={item.responsible} onChange={e => handleFieldChange('responsible', e.target.value)} placeholder="Responsável" className="border-gray-300 rounded-md shadow-sm"/>
+                    <select value={item.type} onChange={e => handleFieldChange('type', e.target.value)} className={`border-gray-300 rounded-md shadow-sm font-medium ${getTypeColor(item.type)}`}>
+                      <option value="palavra">Palavra</option> <option value="música">Música</option> <option value="oração">Oração</option> <option value="técnico">Técnico</option>
+                    </select>
+                    <div className="flex items-center gap-2">
+                      <input type="number" value={item.duration} onChange={e => handleFieldChange('duration', parseInt(e.target.value, 10) || 0)} className="w-20 border-gray-300 rounded-md shadow-sm"/>
+                      <span className="text-gray-600">min</span>
+                      <span className="font-mono text-gray-800 bg-gray-100 px-2 py-1 rounded-md">{item.startTime}</span>
+                    </div>
+                  </div>
+                  <textarea value={item.description} onChange={e => handleFieldChange('description', e.target.value)} placeholder="Descrição ou detalhes..." className="w-full mt-2 border-gray-300 rounded-md shadow-sm" rows="2"></textarea>
+                  {showTechnical && (
+                    <div className="mt-3 bg-gray-50 rounded p-3">
+                      <h4 className="font-semibold text-sm mb-2">Detalhes Técnicos</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
+                        <InfoInput placeholder="Projeção" value={item.technical.projection} onChange={e => handleTechFieldChange('projection', e.target.value)} />
+                        <InfoInput placeholder="Som" value={item.technical.sound} onChange={e => handleTechFieldChange('sound', e.target.value)} />
+                        <InfoInput placeholder="Microfone" value={item.technical.microphone} onChange={e => handleTechFieldChange('microphone', e.target.value)} />
+                        <InfoInput placeholder="Iluminação" value={item.technical.lighting} onChange={e => handleTechFieldChange('lighting', e.target.value)} />
+                        <InfoInput placeholder="Câmera" value={item.technical.camera} onChange={e => handleTechFieldChange('camera', e.target.value)} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col items-center pt-1">
+                  <button onClick={() => onDelete(item.id)} className="text-red-500 hover:text-red-700 p-1"><icons.Trash2 size={18} /></button>
+                </div>
+              </div>
+            </div>
+          )
         };
-        
-        // --- COMPONENTE MODO APRESENTAÇÃO (AO VIVO) ---
+
         const PresentationView = ({ state, onStateUpdate }) => {
             const { items, cultInfo, liveState } = state;
             const { currentItemIndex, isRunning, currentTime, actualStartTime } = liveState;
@@ -498,7 +628,7 @@
                 </div>
             );
         };
-
+        
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<WorshipOrderControl />);
     </script>
