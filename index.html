@@ -15,7 +15,7 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -107,26 +107,19 @@
 
             const { db, appId, firestore } = window;
             
-            // ### INÍCIO DA CORREÇÃO FINAL ###
             const worshipDataBaseRef = useMemo(() => {
                 if (!db || !firestore || !appId) return null;
-                // O caminho agora tem 6 partes (par), o que é VÁLIDO para uma referência de documento.
-                // Usamos "singleton" como ID fixo do documento que conterá os dados.
                 return firestore.doc(db, "artifacts", appId, "public", "data", "worship-order", "singleton");
             }, [db, firestore, appId]);
 
             const liveDocRef = useMemo(() => {
-                if (!worshipDataBaseRef) return null;
-                // Mantém o estado ao vivo no próprio documento base para simplificar
                 return worshipDataBaseRef;
             }, [worshipDataBaseRef]);
 
             const presetsCollectionRef = useMemo(() => {
                 if (!worshipDataBaseRef) return null;
-                // Cria a subcoleção 'presets' DENTRO do documento base. Isso é VÁLIDO.
                 return firestore.collection(worshipDataBaseRef, "presets");
             }, [worshipDataBaseRef, firestore]);
-            // ### FIM DA CORREÇÃO FINAL ###
 
             useEffect(() => {
                 const { auth, firebaseAuth } = window;
@@ -141,11 +134,7 @@
                             setIsAuthReady(true);
                             return;
                         }
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await firebaseAuth.signInWithCustomToken(auth, __initial_auth_token);
-                        } else {
-                            await firebaseAuth.signInAnonymously(auth);
-                        }
+                        await firebaseAuth.signInAnonymously(auth);
                         setIsAuthReady(true);
                     } catch (error) {
                         console.error("Erro de autenticação:", error);
@@ -160,7 +149,6 @@
                 setIsSaving(true);
                 try {
                     const serializableState = JSON.parse(JSON.stringify(newState));
-                    // Usamos merge: true para não apagar a subcoleção de presets ao salvar o estado
                     await firestore.setDoc(liveDocRef, serializableState, { merge: true });
                 } catch (error) {
                     console.error("Erro ao salvar no Firebase:", error);
@@ -170,15 +158,13 @@
             }, [liveDocRef, firestore]);
 
             useEffect(() => {
-                if (!isAuthReady) return;
-                if (!liveDocRef) {
-                    setIsLoading(false);
+                if (!isAuthReady || !liveDocRef) {
+                    if(isAuthReady) setIsLoading(false);
                     return;
                 }
-                const unsubscribe = firestore.onSnapshot(liveDocRef, (docSnap) => {
+                const unsubscribe = onSnapshot(liveDocRef, (docSnap) => {
                     if (docSnap.exists()) {
                         const data = docSnap.data();
-                        // Garante que só atualizamos o estado se os dados existirem
                         if (data.items && data.cultInfo && data.liveState) {
                            setState(data);
                         }
@@ -196,13 +182,13 @@
             const fetchPresets = useCallback(async () => {
                 if (!presetsCollectionRef) return;
                 try {
-                    const snapshot = await firestore.getDocs(presetsCollectionRef);
+                    const snapshot = await getDocs(presetsCollectionRef);
                     const presetsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     setPresets(presetsData);
                 } catch (error) {
                     console.error("Erro ao carregar presets:", error);
                 }
-            }, [presetsCollectionRef, firestore]);
+            }, [presetsCollectionRef]);
 
             useEffect(() => {
                 if(isAuthReady) {
@@ -214,9 +200,6 @@
                 setState(newState);
                 saveStateToFirebase(newState);
             };
-            
-            // O restante do código, a partir daqui, não precisa de alterações.
-            // ...
 
             const calculateStartTimes = (items, startTime) => {
                 if (!startTime || !/^\d{2}:\d{2}$/.test(startTime)) {
@@ -231,7 +214,8 @@
                     return { ...item, startTime: itemStartTime };
                 });
             };
-
+            
+            // ... (funções de manipulação de item como addItem, updateItem, etc. permanecem iguais)
             const handleCultInfoChange = (field, value) => {
                 const newCultInfo = { ...state.cultInfo, [field]: value };
                 const newItems = calculateStartTimes(state.items, newCultInfo.startTime);
@@ -283,7 +267,7 @@
                             items: state.items,
                             cultInfo: state.cultInfo,
                         };
-                        await firestore.addDoc(presetsCollectionRef, presetData);
+                        await addDoc(presetsCollectionRef, presetData);
                         alert(`Preset "${presetName}" salvo com sucesso!`);
                         fetchPresets(); 
                     } catch (error) {
@@ -299,37 +283,57 @@
                 if (preset) {
                     const newItems = calculateStartTimes(preset.items, preset.cultInfo.startTime);
                     handleStateUpdate({
-                        ...state, // Mantém o liveState atual
+                        ...state,
                         items: newItems,
                         cultInfo: preset.cultInfo
                     });
                 }
             };
 
-            const handleDownloadTemplate = () => {
-                const header = "title,duration,type,responsible,description\n";
-                const example = "Música de Abertura,10,música,Ministério de Louvor,Usar playback e projeção com letra.\n";
-                const csvContent = "data:text/csv;charset=utf-8," + encodeURIComponent(header + example);
-                const link = document.createElement("a");
-                link.setAttribute("href", csvContent);
-                link.setAttribute("download", "modelo_ordem_de_culto.csv");
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+            // ### ALTERADO: Função para baixar modelo em Excel ###
+            const handleDownloadExcelTemplate = () => {
+                const data = [{
+                    title: "Música de Abertura",
+                    duration: 10,
+                    type: "música",
+                    responsible: "Ministério de Louvor",
+                    description: "Usar playback e projeção com letra."
+                }];
+
+                const worksheet = XLSX.utils.json_to_sheet(data);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Ordem de Culto");
+                
+                // Define a largura das colunas
+                worksheet["!cols"] = [
+                    { wch: 30 }, // title
+                    { wch: 10 }, // duration
+                    { wch: 15 }, // type
+                    { wch: 25 }, // responsible
+                    { wch: 50 }, // description
+                ];
+
+                XLSX.writeFile(workbook, "modelo_ordem_de_culto.xlsx");
             };
 
-            const handleImportCSV = (event) => {
+            // ### ALTERADO: Função para importar dados do Excel ###
+            const handleImportExcel = (event) => {
                 const file = event.target.files[0];
                 if (file) {
                     if (!confirm("Isso substituirá a ordem de culto atual com os dados do arquivo. Deseja continuar?")) {
                         event.target.value = null; 
                         return;
                     }
-                    Papa.parse(file, {
-                        header: true,
-                        skipEmptyLines: true,
-                        complete: (results) => {
-                            const newItemsFromCSV = results.data.map(row => ({
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const data = e.target.result;
+                            const workbook = XLSX.read(data, { type: 'array' });
+                            const sheetName = workbook.SheetNames[0];
+                            const worksheet = workbook.Sheets[sheetName];
+                            const json = XLSX.utils.sheet_to_json(worksheet);
+
+                            const newItemsFromExcel = json.map(row => ({
                                 id: Date.now() + Math.random(),
                                 title: row.title || 'Sem Título',
                                 duration: parseInt(row.duration, 10) || 5,
@@ -340,14 +344,14 @@
                                 completed: false,
                                 actualDuration: null,
                             }));
-                            const newItems = calculateStartTimes(newItemsFromCSV, state.cultInfo.startTime);
+                            const newItems = calculateStartTimes(newItemsFromExcel, state.cultInfo.startTime);
                             handleStateUpdate({ ...state, items: newItems });
-                        },
-                        error: (error) => {
-                            alert("Ocorreu um erro ao ler o arquivo CSV.");
-                            console.error("Erro no PapaParse:", error);
+                        } catch(error) {
+                            alert("Ocorreu um erro ao ler o arquivo Excel. Verifique se o formato está correto.");
+                            console.error("Erro no SheetJS:", error);
                         }
-                    });
+                    };
+                    reader.readAsArrayBuffer(file);
                     event.target.value = null;
                 }
             };
@@ -385,7 +389,7 @@
                                 onMoveItem={moveItem}
                                 onSavePreset={handleSavePreset}
                                 onLoadPreset={handleLoadPreset}
-                                onDownloadTemplate={handleDownloadTemplate}
+                                onDownloadTemplate={handleDownloadExcelTemplate} // <-- ALTERADO
                                 onImportClick={() => fileInputRef.current.click()}
                                 presets={presets}
                             />
@@ -395,7 +399,14 @@
                                 onStateUpdate={handleStateUpdate}
                             />
                         )}
-                        <input type="file" accept=".csv" ref={fileInputRef} className="hidden-file-input" onChange={handleImportCSV} />
+                        {/* ### ALTERADO: Aceita arquivos .xlsx e .xls ### */}
+                        <input 
+                            type="file" 
+                            accept=".xlsx, .xls" 
+                            ref={fileInputRef} 
+                            className="hidden-file-input" 
+                            onChange={handleImportExcel} 
+                        />
                     </div>
                 </div>
             );
@@ -432,7 +443,8 @@
                         <div className="p-4 border-b flex flex-wrap justify-between items-center gap-3">
                             <h2 className="text-xl font-semibold">Ordem de Culto</h2>
                             <div className="flex flex-wrap gap-2">
-                                <button onClick={onImportClick} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.UploadCloud size={16}/> Importar CSV</button>
+                                {/* ### ALTERADO: Textos dos botões ### */}
+                                <button onClick={onImportClick} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.UploadCloud size={16}/> Importar Excel</button>
                                 <button onClick={onDownloadTemplate} className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.DownloadCloud size={16}/> Baixar Modelo</button>
                                 <button onClick={onSavePreset} className="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.Save size={16}/> Salvar Preset</button>
                                 <select onChange={(e) => { if(e.target.value) onLoadPreset(e.target.value) }} className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-md text-sm font-semibold" value="">
@@ -446,7 +458,7 @@
                             {items && items.map((item, index) => (
                                 <PlanningItem key={item.id} item={item} index={index} isFirst={index === 0} isLast={index === items.length - 1} showTechnical={showTechnical} onUpdate={onUpdateItem} onDelete={onDeleteItem} onMove={onMoveItem} />
                             ))}
-                            {(!items || items.length === 0) && <p className="p-4 text-gray-500">Nenhum item na ordem de culto. Adicione um para começar ou importe de um arquivo CSV.</p>}
+                            {(!items || items.length === 0) && <p className="p-4 text-gray-500">Nenhum item na ordem de culto. Adicione um para começar ou importe um arquivo Excel.</p>}
                         </div>
                     </div>
                 </>
