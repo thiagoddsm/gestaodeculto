@@ -98,6 +98,7 @@
           Lightbulb: (props) => <SvgIcon {...props}><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M12 2a7 7 0 0 0-5 2.24"></path><path d="M12 2v6a2 2 0 0 1-2 2H8a2 2 0 0 0-2 2v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1a2 2 0 0 0-2-2h-2a2 2 0 0 1-2-2V2Z"></path></SvgIcon>,
           Info: (props) => <SvgIcon {...props}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></SvgIcon>,
           ChevronRight: (props) => <SvgIcon {...props}><polyline points="9 18 15 12 9 6"></polyline></SvgIcon>,
+          Power: (props) => <SvgIcon {...props}><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></SvgIcon>,
         };
 
         const App = () => {
@@ -155,7 +156,6 @@
             useEffect(() => {
                 if (!isAuthReady || !liveDocRef) { if(isAuthReady) setIsLoading(false); return; }
                 const unsubscribe = firestore.onSnapshot(liveDocRef, (docSnap) => {
-                    // ### CORREÇÃO: Ignora "ecos" de escritas locais ###
                     if (docSnap.metadata.hasPendingWrites) {
                         return;
                     }
@@ -467,8 +467,47 @@
 
             const handleToggleTimer = () => { onStateUpdate(prevState => { const newLiveState = { ...prevState.liveState, isRunning: !prevState.liveState.isRunning }; if (newLiveState.isRunning && prevState.liveState.currentItemIndex === 0 && !prevState.liveState.actualStartTime) { newLiveState.actualStartTime = new Date().toISOString(); } return { ...prevState, liveState: newLiveState }; }); };
             const handleResetTimer = () => { onStateUpdate(prevState => ({ ...prevState, liveState: { ...prevState.liveState, currentTime: 0 } })); };
-            const handleNext = () => { if (!items || currentItemIndex >= items.length - 1) return; onStateUpdate(prevState => { const newItems = prevState.items.map((item, index) => index === prevState.liveState.currentItemIndex ? { ...item, completed: true, actualDuration: prevState.liveState.currentTime } : item ); return { ...prevState, items: newItems, liveState: { ...prevState.liveState, currentItemIndex: prevState.liveState.currentItemIndex + 1, currentTime: 0, isRunning: true } }; }); };
-            const handlePrevious = () => { if (currentItemIndex <= 0) return; onStateUpdate(prevState => ({ ...prevState, liveState: { ...prevState.liveState, currentItemIndex: prevState.liveState.currentItemIndex - 1, currentTime: 0 } })); };
+            
+            const handleNext = () => {
+                if (!items || currentItemIndex >= items.length - 1) return;
+                onStateUpdate(prevState => {
+                    const newItems = prevState.items.map((item, index) => 
+                        index === prevState.liveState.currentItemIndex ? { ...item, completed: true, actualDuration: prevState.liveState.currentTime } : item 
+                    );
+                    return { ...prevState, items: newItems, liveState: { ...prevState.liveState, currentItemIndex: prevState.liveState.currentItemIndex + 1, currentTime: 0, isRunning: true } };
+                });
+            };
+
+            const handlePrevious = () => {
+                if (currentItemIndex <= 0) return;
+                onStateUpdate(prevState => {
+                    const newItems = prevState.items.map((item, index) => {
+                        if (index === prevState.liveState.currentItemIndex - 1) {
+                            return { ...item, completed: false, actualDuration: null };
+                        }
+                        return item;
+                    });
+                    return { ...prevState, items: newItems, liveState: { ...prevState.liveState, currentItemIndex: prevState.liveState.currentItemIndex - 1, currentTime: 0 } };
+                });
+            };
+
+            const handleResetWorship = () => {
+                if (confirm("Tem certeza que deseja reiniciar o culto? Todo o progresso será perdido.")) {
+                    onStateUpdate(prevState => {
+                        const resetItems = prevState.items.map(item => ({ ...item, completed: false, actualDuration: null }));
+                        return {
+                            ...prevState,
+                            items: resetItems,
+                            liveState: {
+                                currentItemIndex: 0,
+                                isRunning: false,
+                                currentTime: 0,
+                                actualStartTime: null
+                            }
+                        };
+                    });
+                }
+            };
 
             if (!currentItem) {
                 return <div className="text-center p-10 bg-white rounded-lg shadow-md"><h2 className="text-2xl font-bold">Culto Finalizado ou sem itens.</h2></div>
@@ -532,8 +571,9 @@
                                     {isRunning ? <icons.Pause size={20}/> : <icons.Play size={20}/>}
                                     {isRunning ? 'Pausar' : 'Iniciar'}
                                 </button>
-                                <button onClick={handleResetTimer} className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg flex items-center gap-2"><icons.RotateCcw size={18}/> Reset</button>
+                                <button onClick={handleResetTimer} className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg flex items-center gap-2"><icons.RotateCcw size={18}/> Resetar Timer</button>
                                 <button onClick={handleNext} className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg disabled:opacity-50" disabled={!items || currentItemIndex >= items.length - 1}>Próximo</button>
+                                <button onClick={handleResetWorship} className="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg flex items-center gap-2"><icons.Power size={18}/> Reiniciar Culto</button>
                             </div>
                         )}
                     </div>
