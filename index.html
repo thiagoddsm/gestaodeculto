@@ -25,12 +25,12 @@
         import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            apiKey: "SUA_API_KEY", // Substitua se não estiver no ambiente Canvas
-            authDomain: "SEU_AUTH_DOMAIN",
-            projectId: "SEU_PROJECT_ID",
-            storageBucket: "SEU_STORAGE_BUCKET",
-            messagingSenderId: "SEU_MESSAGING_SENDER_ID",
-            appId: "SEU_APP_ID"
+            apiKey: "AIzaSyCYaOPtQdD1hU29awdgeN-rEGaoLGBGYBM", // Substitua se não estiver no ambiente Canvas
+            authDomain: "gestao-de-culto.firebaseapp.com",
+            projectId: "gestao-de-culto",
+            storageBucket: "gestao-de-culto.firebasestorage.app",
+            messagingSenderId: "843566675046",
+            appId: "1:843566675046:web:cc1e54a813827f4502a9a7"
         };
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'worship-planner-default';
@@ -86,7 +86,6 @@
           CheckCircle: (props) => <SvgIcon {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></SvgIcon>,
           RotateCcw: (props) => <SvgIcon {...props}><path d="M3 2v6h6"></path><path d="M3 13a9 9 0 1 0 3-7.7L3 8"></path></SvgIcon>,
           Clock: (props) => <SvgIcon {...props}><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></SvgIcon>,
-          Upload: (props) => <SvgIcon {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></SvgIcon>,
         };
 
         // --- Componente Principal ---
@@ -102,7 +101,7 @@
                     currentItemIndex: 0,
                     isRunning: false,
                     currentTime: 0,
-                    actualStartTime: null,
+                    actualStartTime: null, // Novo campo para o início real
                 }
             });
             const [isLoading, setIsLoading] = useState(true);
@@ -153,10 +152,7 @@
                     if (docSnap.exists()) {
                         setState(docSnap.data());
                     } else {
-                        // CORREÇÃO: Não salva mais um estado em branco.
-                        // Apenas mantém o estado local inicial.
-                        // O primeiro salvamento ocorrerá com a primeira ação do usuário.
-                        console.log("Documento não encontrado. O primeiro salvamento irá criá-lo.");
+                        saveStateToFirebase(state);
                     }
                     setIsLoading(false);
                 }, (error) => {
@@ -249,14 +245,14 @@
 
                         {mode === 'planning' ? (
                             <PlanningView 
-                                state={state}
+                                items={state.items} 
+                                cultInfo={state.cultInfo}
                                 onCultInfoChange={handleCultInfoChange}
                                 showTechnical={showTechnical} 
                                 onAddItem={addItem} 
                                 onUpdateItem={updateItem}
                                 onDeleteItem={deleteItem}
-                                onMoveItem={moveItem}
-                                onStateUpdate={handleStateUpdate}
+                                onMoveItem={moveItem} 
                             />
                         ) : (
                             <PresentationView 
@@ -276,98 +272,33 @@
             </div>
         );
 
-        const PlanningView = ({ state, onCultInfoChange, showTechnical, onAddItem, onUpdateItem, onDeleteItem, onMoveItem, onStateUpdate }) => {
-            const fileInputRef = React.useRef(null);
-            
-            const handleImportClick = () => {
-                fileInputRef.current.click();
-            };
-
-            const handleFileImport = (event) => {
-                const file = event.target.files[0];
-                if (!file) return;
-
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const text = e.target.result;
-                    try {
-                        const rows = text.split('\n').filter(row => row.trim() !== '');
-                        const headers = rows.shift().split(';').map(h => h.trim().toLowerCase());
-                        
-                        const requiredHeaders = ['título', 'duração', 'tipo', 'responsável'];
-                        if (!requiredHeaders.every(h => headers.includes(h))) {
-                            alert('Arquivo CSV inválido. Certifique-se de que a planilha contém as colunas: Título, Duração, Tipo, Responsável, Descrição, Projeção, Som, Microfone, Iluminação, Câmera.');
-                            return;
-                        }
-
-                        const newItems = rows.map(row => {
-                            const values = row.split(';');
-                            const itemData = headers.reduce((obj, header, index) => {
-                                obj[header] = values[index] ? values[index].trim() : '';
-                                return obj;
-                            }, {});
-
-                            return {
-                                id: Date.now() + Math.random(),
-                                title: itemData['título'] || 'Sem Título',
-                                duration: parseInt(itemData['duração'], 10) || 5,
-                                type: itemData['tipo'] || 'palavra',
-                                responsible: itemData['responsável'] || '',
-                                description: itemData['descrição'] || '',
-                                technical: {
-                                    projection: itemData['projeção'] || '-',
-                                    sound: itemData['som'] || '-',
-                                    microphone: itemData['microfone'] || '-',
-                                    lighting: itemData['iluminação'] || '-',
-                                    camera: itemData['câmera'] || '-',
-                                },
-                                completed: false,
-                                actualDuration: null,
-                            };
-                        });
-                        
-                        if (confirm(`Foram encontrados ${newItems.length} itens. Deseja substituir a ordem de culto atual?`)) {
-                            onStateUpdate({ ...state, items: newItems });
-                        }
-
-                    } catch (error) {
-                        alert('Ocorreu um erro ao processar o arquivo. Verifique o formato do CSV.');
-                        console.error("Erro ao importar CSV:", error);
-                    }
-                };
-                reader.readAsText(file, 'UTF-8');
-            };
-
+        const PlanningView = ({ items, cultInfo, onCultInfoChange, showTechnical, onAddItem, onUpdateItem, onDeleteItem, onMoveItem }) => {
             return (
                 <>
                     <div className="bg-white rounded-lg p-6 mb-6 shadow-sm">
                       <h2 className="text-xl font-semibold mb-4">Informações do Culto</h2>
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                          <InfoInput label="Data" value={state.cultInfo.date} onChange={e => onCultInfoChange('date', e.target.value)} />
-                          <InfoInput label="Coordenador" value={state.cultInfo.coordinator} onChange={e => onCultInfoChange('coordinator', e.target.value)} />
-                          <InfoInput label="Dirigente" value={state.cultInfo.leader} onChange={e => onCultInfoChange('leader', e.target.value)} />
-                          <InfoInput label="Louvor" value={state.cultInfo.worship} onChange={e => onCultInfoChange('worship', e.target.value)} />
-                          <InfoInput label="Pregador" value={state.cultInfo.preacher} onChange={e => onCultInfoChange('preacher', e.target.value)} />
+                          <InfoInput label="Data" value={cultInfo.date} onChange={e => onCultInfoChange('date', e.target.value)} />
+                          <InfoInput label="Coordenador" value={cultInfo.coordinator} onChange={e => onCultInfoChange('coordinator', e.target.value)} />
+                          <InfoInput label="Dirigente" value={cultInfo.leader} onChange={e => onCultInfoChange('leader', e.target.value)} />
+                          <InfoInput label="Louvor" value={cultInfo.worship} onChange={e => onCultInfoChange('worship', e.target.value)} />
+                          <InfoInput label="Pregador" value={cultInfo.preacher} onChange={e => onCultInfoChange('preacher', e.target.value)} />
                           <div className="flex gap-2">
-                            <InfoInput label="Início" type="time" value={state.cultInfo.startTime} onChange={e => onCultInfoChange('startTime', e.target.value)} />
-                            <InfoInput label="Live" type="time" value={state.cultInfo.liveTime} onChange={e => onCultInfoChange('liveTime', e.target.value)} />
+                            <InfoInput label="Início" type="time" value={cultInfo.startTime} onChange={e => onCultInfoChange('startTime', e.target.value)} />
+                            <InfoInput label="Live" type="time" value={cultInfo.liveTime} onChange={e => onCultInfoChange('liveTime', e.target.value)} />
                           </div>
                       </div>
                     </div>
                     <div className="bg-white rounded-lg shadow-sm">
                       <div className="p-4 border-b flex justify-between items-center">
                         <h2 className="text-xl font-semibold">Ordem de Culto</h2>
-                        <div className="flex gap-2">
-                            <input type="file" ref={fileInputRef} onChange={handleFileImport} className="hidden" accept=".csv"/>
-                            <button onClick={handleImportClick} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.Upload size={16}/> Importar</button>
-                            <button onClick={onAddItem} className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.Plus size={16}/> Adicionar</button>
-                        </div>
+                        <button onClick={onAddItem} className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.Plus size={16}/> Adicionar Item</button>
                       </div>
                       <div className="divide-y divide-gray-200">
-                        {state.items.map((item, index) => (
-                          <PlanningItem key={item.id} item={item} index={index} isFirst={index === 0} isLast={index === state.items.length - 1} showTechnical={showTechnical} onUpdate={onUpdateItem} onDelete={onDeleteItem} onMove={onMoveItem} />
+                        {items.map((item, index) => (
+                          <PlanningItem key={item.id} item={item} index={index} isFirst={index === 0} isLast={index === items.length - 1} showTechnical={showTechnical} onUpdate={onUpdateItem} onDelete={onDeleteItem} onMove={onMoveItem} />
                         ))}
-                        {state.items.length === 0 && <p className="p-4 text-gray-500">Nenhum item na ordem de culto. Adicione um para começar.</p>}
+                        {items.length === 0 && <p className="p-4 text-gray-500">Nenhum item na ordem de culto. Adicione um para começar.</p>}
                       </div>
                     </div>
                 </>
@@ -422,6 +353,7 @@
             )
         };
         
+        // --- COMPONENTE MODO APRESENTAÇÃO (AO VIVO) ---
         const PresentationView = ({ state, onStateUpdate }) => {
             const { items, cultInfo, liveState } = state;
             const { currentItemIndex, isRunning, currentTime, actualStartTime } = liveState;
