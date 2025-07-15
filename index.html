@@ -110,7 +110,13 @@
                     projecao: 'A definir', iluminacao: 'A definir', transmissao: 'A definir', pregador: 'A definir',
                     startTime: '19:00'
                 },
-                liveState: { currentItemIndex: 0, isRunning: false, currentTime: 0, actualStartTime: null }
+                liveState: { 
+                    currentItemIndex: 0, 
+                    isRunning: false, 
+                    itemStartTime: null,
+                    accumulatedTime: 0,
+                    actualStartTime: null 
+                }
             });
             const [isLoading, setIsLoading] = useState(true);
             const [isAuthReady, setIsAuthReady] = useState(false);
@@ -421,31 +427,36 @@
         };
 
         const PresentationView = ({ state, onStateUpdate, isReadOnly }) => {
+            const [displayTime, setDisplayTime] = useState(0);
             const { items, cultInfo, liveState } = state;
-            const { currentItemIndex, isRunning, currentTime, actualStartTime } = liveState;
+            const { currentItemIndex, isRunning, itemStartTime, accumulatedTime, actualStartTime } = liveState;
             const currentItem = items && items[currentItemIndex];
             const nextItem = items && items[currentItemIndex + 1];
 
             useEffect(() => {
                 let interval;
-                if (isRunning && !isReadOnly) {
+                if (isRunning) {
                     interval = setInterval(() => {
-                        onStateUpdate(prevState => ({ ...prevState, liveState: { ...prevState.liveState, currentTime: prevState.liveState.currentTime + 1 } }));
-                    }, 1000);
+                        const elapsed = itemStartTime ? (Date.now() - itemStartTime) / 1000 : 0;
+                        setDisplayTime(accumulatedTime + elapsed);
+                    }, 250);
+                } else {
+                    setDisplayTime(accumulatedTime);
                 }
+                
                 return () => clearInterval(interval);
-            }, [isRunning, isReadOnly, onStateUpdate]);
+            }, [isRunning, itemStartTime, accumulatedTime, currentItemIndex]);
 
             const formatTime = (seconds) => {
                 if (!seconds || seconds < 0) seconds = 0;
                 const mins = Math.floor(seconds / 60);
-                const secs = seconds % 60;
+                const secs = Math.floor(seconds % 60);
                 return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
             };
 
             const plannedDurationInSeconds = (currentItem?.duration || 0) * 60;
-            const isOvertime = currentTime > plannedDurationInSeconds;
-            const progressPercentage = plannedDurationInSeconds > 0 ? Math.min((currentTime / plannedDurationInSeconds) * 100, 100) : 0;
+            const isOvertime = displayTime > plannedDurationInSeconds;
+            const progressPercentage = plannedDurationInSeconds > 0 ? Math.min((displayTime / plannedDurationInSeconds) * 100, 100) : 0;
             
             const balance = useMemo(() => {
                 if (!items) return 0;
@@ -465,16 +476,18 @@
                 return itemsBalance - initialDelayInMinutes;
             }, [items, currentItemIndex, actualStartTime, cultInfo.startTime]);
 
-            const handleToggleTimer = () => { onStateUpdate(prevState => { const newLiveState = { ...prevState.liveState, isRunning: !prevState.liveState.isRunning }; if (newLiveState.isRunning && prevState.liveState.currentItemIndex === 0 && !prevState.liveState.actualStartTime) { newLiveState.actualStartTime = new Date().toISOString(); } return { ...prevState, liveState: newLiveState }; }); };
-            const handleResetTimer = () => { onStateUpdate(prevState => ({ ...prevState, liveState: { ...prevState.liveState, currentTime: 0 } })); };
+            const handleToggleTimer = () => { onStateUpdate(prevState => { const { liveState } = prevState; const now = Date.now(); if (liveState.isRunning) { const elapsed = liveState.itemStartTime ? (now - liveState.itemStartTime) / 1000 : 0; return { ...prevState, liveState: { ...liveState, isRunning: false, accumulatedTime: liveState.accumulatedTime + elapsed, itemStartTime: null } }; } else { return { ...prevState, liveState: { ...liveState, isRunning: true, itemStartTime: now, actualStartTime: liveState.actualStartTime || new Date().toISOString() } }; } }); };
+            const handleResetTimer = () => { onStateUpdate(prevState => ({ ...prevState, liveState: { ...prevState.liveState, isRunning: false, itemStartTime: null, accumulatedTime: 0 } })); };
             
             const handleNext = () => {
                 if (!items || currentItemIndex >= items.length - 1) return;
                 onStateUpdate(prevState => {
-                    const newItems = prevState.items.map((item, index) => 
-                        index === prevState.liveState.currentItemIndex ? { ...item, completed: true, actualDuration: prevState.liveState.currentTime } : item 
-                    );
-                    return { ...prevState, items: newItems, liveState: { ...prevState.liveState, currentItemIndex: prevState.liveState.currentItemIndex + 1, currentTime: 0, isRunning: true } };
+                    const { items, liveState } = prevState;
+                    const now = Date.now();
+                    const elapsed = liveState.isRunning && liveState.itemStartTime ? (now - liveState.itemStartTime) / 1000 : 0;
+                    const finalDuration = liveState.accumulatedTime + elapsed;
+                    const newItems = items.map((item, index) => index === liveState.currentItemIndex ? { ...item, completed: true, actualDuration: finalDuration } : item );
+                    return { ...prevState, items: newItems, liveState: { ...liveState, currentItemIndex: liveState.currentItemIndex + 1, isRunning: true, itemStartTime: now, accumulatedTime: 0 } };
                 });
             };
 
@@ -487,7 +500,7 @@
                         }
                         return item;
                     });
-                    return { ...prevState, items: newItems, liveState: { ...prevState.liveState, currentItemIndex: prevState.liveState.currentItemIndex - 1, currentTime: 0 } };
+                    return { ...prevState, items: newItems, liveState: { ...prevState.liveState, currentItemIndex: prevState.liveState.currentItemIndex - 1, isRunning: false, itemStartTime: null, accumulatedTime: 0 } };
                 });
             };
 
@@ -498,12 +511,7 @@
                         return {
                             ...prevState,
                             items: resetItems,
-                            liveState: {
-                                currentItemIndex: 0,
-                                isRunning: false,
-                                currentTime: 0,
-                                actualStartTime: null
-                            }
+                            liveState: { currentItemIndex: 0, isRunning: false, itemStartTime: null, accumulatedTime: 0, actualStartTime: null }
                         };
                     });
                 }
@@ -543,7 +551,7 @@
                         
                         <div className="my-6 text-center">
                             <div className={`text-7xl font-mono ${isOvertime ? 'text-red-400' : 'text-green-400'}`}>
-                                {formatTime(currentTime)}
+                                {formatTime(displayTime)}
                             </div>
                             <div className="text-gray-400">Planejado: {formatTime(plannedDurationInSeconds)}</div>
                         </div>
