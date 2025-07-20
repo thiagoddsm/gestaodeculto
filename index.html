@@ -116,9 +116,9 @@
             
             const { db, appId, firestore, auth, firebaseAuth } = window;
 
-            // ALTERADO: Referências de documentos separadas para plano e estado ao vivo
-            const planDocRef = useMemo(() => db ? firestore.doc(db, "artifacts", appId, "public", "data", "worship-plan") : null, [db, appId]);
-            const liveDocRef = useMemo(() => db ? firestore.doc(db, "artifacts", appId, "public", "data", "live-state") : null, [db, appId]);
+            // CORRIGIDO: Referências de documentos com número par de segmentos
+            const planDocRef = useMemo(() => db ? firestore.doc(db, "artifacts", appId, "public", "data", "plans", "current") : null, [db, appId]);
+            const liveDocRef = useMemo(() => db ? firestore.doc(db, "artifacts", appId, "public", "data", "live", "current") : null, [db, appId]);
             const presetsCollectionRef = useMemo(() => db ? firestore.collection(db, "artifacts", appId, "public", "data", "presets") : null, [db, appId]);
 
             // Efeito para definir o modo de visualização (coordenador ou equipe)
