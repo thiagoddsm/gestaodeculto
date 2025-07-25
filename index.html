@@ -137,6 +137,28 @@
                 </div>
             );
         };
+        
+        const Modal = ({ show, onClose, title, children, footer }) => {
+            if (!show) return null;
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={onClose}>
+                    <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
+                        <h2 className="text-xl font-semibold mb-4">{title}</h2>
+                        <div className="mb-6">{children}</div>
+                        <div className="flex justify-end gap-3">
+                            {footer}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const useModal = () => {
+            const [modalState, setModalState] = useState({ show: false, title: '', content: null, footer: null });
+            const showModal = ({ title, content, footer }) => setModalState({ show: true, title, content, footer });
+            const hideModal = () => setModalState({ show: false, title: '', content: null, footer: null });
+            return { modalState, showModal, hideModal };
+        };
 
         const App = () => {
             const [state, setState] = useState({
@@ -249,6 +271,7 @@
             const [selectedPresetId, setSelectedPresetId] = useState('');
             const fileInputRef = useRef(null);
             const { firestore, db, appId } = window;
+            const { modalState, showModal, hideModal } = useModal();
 
             useEffect(() => {
                 const timeoutId = setTimeout(() => setIsSaving(false), 500);
@@ -279,7 +302,7 @@
 
             const addItem = () => {
                 handleStateUpdate(prevState => {
-                    const newItem = { id: Date.now(), title: 'Novo Momento', duration: 5, type: 'palavra', responsible: 'A definir', description: '', technical: { projection: '-', sound: '-', microphone: '-', lighting: '-', camera: '-' }, completed: false, actualDuration: null, actualStartTime: null, actualEndTime: null };
+                    const newItem = { id: crypto.randomUUID(), title: 'Novo Momento', duration: 5, type: 'palavra', responsible: 'A definir', description: '', technical: { projection: '-', sound: '-', microphone: '-', lighting: '-', camera: '-' }, completed: false, actualDuration: null, actualStartTime: null, actualEndTime: null };
                     const newItems = calculateStartTimes([...prevState.items, newItem], prevState.cultInfo.startTime);
                     return { ...prevState, items: newItems };
                 });
@@ -294,12 +317,20 @@
             };
             
             const deleteItem = (id) => {
-                if (confirm('Tem certeza que deseja excluir este item?')) {
-                    handleStateUpdate(prevState => {
-                        const newItems = calculateStartTimes(prevState.items.filter(item => item.id !== id), prevState.cultInfo.startTime);
-                        return { ...prevState, items: newItems };
-                    });
-                }
+                showModal({
+                    title: "Excluir Item",
+                    content: <p>Tem certeza que deseja excluir este item?</p>,
+                    footer: <>
+                        <button onClick={hideModal} className="px-4 py-2 bg-gray-200 rounded-md">Cancelar</button>
+                        <button onClick={() => {
+                            handleStateUpdate(prevState => {
+                                const newItems = calculateStartTimes(prevState.items.filter(item => item.id !== id), prevState.cultInfo.startTime);
+                                return { ...prevState, items: newItems };
+                            });
+                            hideModal();
+                        }} className="px-4 py-2 bg-red-600 text-white rounded-md">Excluir</button>
+                    </>
+                });
             };
             
             const moveItem = (index, direction) => {
@@ -328,27 +359,44 @@
             };
             
             const handleLoadPreset = (presetId) => {
-                if (!presetId || !confirm("Isso substituirá a ordem de culto atual. Deseja continuar?")) return;
+                if (!presetId) return;
                 const preset = presets.find(p => p.id === presetId);
                 if (preset) {
-                    const newItems = calculateStartTimes(preset.items, preset.cultInfo.startTime);
-                    handleStateUpdate({ ...state, items: newItems, cultInfo: preset.cultInfo });
+                    showModal({
+                        title: "Carregar Preset",
+                        content: <p>Isso substituirá a ordem de culto atual. Deseja continuar?</p>,
+                        footer: <>
+                            <button onClick={hideModal} className="px-4 py-2 bg-gray-200 rounded-md">Cancelar</button>
+                            <button onClick={() => {
+                                const newItems = calculateStartTimes(preset.items, preset.cultInfo.startTime);
+                                handleStateUpdate({ ...state, items: newItems, cultInfo: preset.cultInfo });
+                                hideModal();
+                            }} className="px-4 py-2 bg-yellow-500 text-white rounded-md">Carregar</button>
+                        </>
+                    });
                 }
             };
             
             const handleDeletePreset = async () => {
                 if (!selectedPresetId) { alert("Por favor, selecione um preset da lista para excluir."); return; }
                 const presetToDelete = presets.find(p => p.id === selectedPresetId);
-                if (!presetToDelete || !confirm(`Tem certeza que deseja excluir o preset "${presetToDelete.name}"?`)) return;
-                const worshipDataBaseRef = firestore.doc(db, "artifacts", appId, "public", "data", "worship-order", "singleton");
-                const presetsCollectionRef = firestore.collection(worshipDataBaseRef, "presets");
-                try {
-                    const docRef = firestore.doc(presetsCollectionRef, selectedPresetId);
-                    await firestore.deleteDoc(docRef);
-                    alert("Preset excluído com sucesso.");
-                    setSelectedPresetId('');
-                    fetchPresets();
-                } catch (error) { console.error("Erro ao excluir o preset:", error); alert(`Erro ao excluir o preset: ${error.message}`); }
+                if (!presetToDelete) return;
+                showModal({
+                    title: "Excluir Preset",
+                    content: <p>Tem certeza que deseja excluir o preset "{presetToDelete.name}"?</p>,
+                    footer: <>
+                        <button onClick={hideModal} className="px-4 py-2 bg-gray-200 rounded-md">Cancelar</button>
+                        <button onClick={async () => {
+                            const worshipDataBaseRef = firestore.doc(db, "artifacts", appId, "public", "data", "worship-order", "singleton");
+                            const presetsCollectionRef = firestore.collection(worshipDataBaseRef, "presets");
+                            const docRef = firestore.doc(presetsCollectionRef, selectedPresetId);
+                            await firestore.deleteDoc(docRef);
+                            setSelectedPresetId('');
+                            fetchPresets();
+                            hideModal();
+                        }} className="px-4 py-2 bg-red-600 text-white rounded-md">Excluir</button>
+                    </>
+                });
             };
 
             const handleDownloadExcelTemplate = () => {
@@ -362,22 +410,32 @@
 
             const handleImportExcel = (event) => {
                 const file = event.target.files[0];
-                if (file && confirm("Isso substituirá a ordem de culto atual. Deseja continuar?")) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        try {
-                            const data = e.target.result;
-                            const workbook = XLSX.read(data, { type: 'array' });
-                            const sheetName = workbook.SheetNames[0];
-                            const worksheet = workbook.Sheets[sheetName];
-                            const json = XLSX.utils.sheet_to_json(worksheet);
-                            const newItemsFromExcel = json.map(row => ({ id: Date.now() + Math.random(), title: row.title || 'Sem Título', duration: parseInt(row.duration, 10) || 5, type: row.type || 'palavra', responsible: row.responsible || 'A definir', description: row.description || '', technical: { projection: '-', sound: '-', microphone: '-', lighting: '-', camera: '-' }, completed: false, actualDuration: null, actualStartTime: null, actualEndTime: null }));
-                            handleStateUpdate(prevState => ({ ...prevState, items: calculateStartTimes(newItemsFromExcel, prevState.cultInfo.startTime) }));
-                        } catch(error) { alert("Ocorreu um erro ao ler o arquivo Excel."); console.error("Erro no SheetJS:", error); }
-                    };
-                    reader.readAsArrayBuffer(file);
+                if (file) {
+                    showModal({
+                        title: "Importar Planilha",
+                        content: <p>Isso substituirá a ordem de culto atual. Deseja continuar?</p>,
+                        footer: <>
+                            <button onClick={() => { event.target.value = null; hideModal(); }} className="px-4 py-2 bg-gray-200 rounded-md">Cancelar</button>
+                            <button onClick={() => {
+                                const reader = new FileReader();
+                                reader.onload = (e) => {
+                                    try {
+                                        const data = e.target.result;
+                                        const workbook = XLSX.read(data, { type: 'array' });
+                                        const sheetName = workbook.SheetNames[0];
+                                        const worksheet = workbook.Sheets[sheetName];
+                                        const json = XLSX.utils.sheet_to_json(worksheet);
+                                        const newItemsFromExcel = json.map(row => ({ id: crypto.randomUUID(), title: row.title || 'Sem Título', duration: parseInt(row.duration, 10) || 5, type: row.type || 'palavra', responsible: row.responsible || 'A definir', description: row.description || '', technical: { projection: '-', sound: '-', microphone: '-', lighting: '-', camera: '-' }, completed: false, actualDuration: null, actualStartTime: null, actualEndTime: null }));
+                                        handleStateUpdate(prevState => ({ ...prevState, items: calculateStartTimes(newItemsFromExcel, prevState.cultInfo.startTime) }));
+                                    } catch(error) { alert("Ocorreu um erro ao ler o arquivo Excel."); console.error("Erro no SheetJS:", error); }
+                                };
+                                reader.readAsArrayBuffer(file);
+                                event.target.value = null;
+                                hideModal();
+                            }} className="px-4 py-2 bg-green-600 text-white rounded-md">Importar</button>
+                        </>
+                    });
                 }
-                event.target.value = null;
             };
 
             const handleExportPDF = () => {
@@ -422,31 +480,34 @@
             };
             
             return (
-                <div className="min-h-screen bg-gray-100 p-4 lg:p-8">
-                    <div className="max-w-screen-2xl mx-auto">
-                        <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
-                            <h1 className="text-3xl lg:text-4xl font-bold text-gray-800">Gestor de Culto</h1>
-                            <div className="flex items-center gap-4">
-                                <Clock />
-                                <div className="flex items-center gap-2">
-                                    <button onClick={() => setShowTechnical(!showTechnical)} className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-md flex items-center gap-2 text-sm">
-                                        <icons.Monitor size={16} /> <span>Técnico</span>
-                                    </button>
-                                    <button onClick={() => setMode(mode === 'planning' ? 'presentation' : 'planning')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center gap-2">
-                                        {mode === 'planning' ? <icons.Play size={18}/> : <icons.Settings size={18}/>}
-                                        <span>{mode === 'planning' ? 'Modo Ao Vivo' : 'Planejamento'}</span>
-                                    </button>
+                <>
+                    <Modal {...modalState} onClose={hideModal} />
+                    <div className="min-h-screen bg-gray-100 p-4 lg:p-8">
+                        <div className="max-w-screen-2xl mx-auto">
+                            <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
+                                <h1 className="text-3xl lg:text-4xl font-bold text-gray-800">Gestor de Culto</h1>
+                                <div className="flex items-center gap-4">
+                                    <Clock />
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={() => setShowTechnical(!showTechnical)} className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-md flex items-center gap-2 text-sm">
+                                            <icons.Monitor size={16} /> <span>Técnico</span>
+                                        </button>
+                                        <button onClick={() => setMode(mode === 'planning' ? 'presentation' : 'planning')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center gap-2">
+                                            {mode === 'planning' ? <icons.Play size={18}/> : <icons.Settings size={18}/>}
+                                            <span>{mode === 'planning' ? 'Modo Ao Vivo' : 'Planejamento'}</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
+                            {mode === 'planning' ? (
+                                <PlanningView {...state} onCultInfoChange={handleCultInfoChange} showTechnical={showTechnical} onAddItem={addItem} onUpdateItem={updateItem} onDeleteItem={deleteItem} onMoveItem={moveItem} onSavePreset={handleSavePreset} onLoadPreset={handleLoadPreset} onDeletePreset={handleDeletePreset} onDownloadTemplate={handleDownloadExcelTemplate} onImportClick={() => fileInputRef.current.click()} onExportPDF={handleExportPDF} presets={presets} selectedPresetId={selectedPresetId} setSelectedPresetId={setSelectedPresetId} />
+                            ) : (
+                                <PresentationView state={state} onStateUpdate={handleStateUpdate} isReadOnly={false} onSwitchToPlanning={() => setMode('planning')} onExportPDF={handleExportPDF} />
+                            )}
+                            <input type="file" accept=".xlsx, .xls" ref={fileInputRef} className="hidden-file-input" onChange={handleImportExcel} />
                         </div>
-                        {mode === 'planning' ? (
-                            <PlanningView {...state} onCultInfoChange={handleCultInfoChange} showTechnical={showTechnical} onAddItem={addItem} onUpdateItem={updateItem} onDeleteItem={deleteItem} onMoveItem={moveItem} onSavePreset={handleSavePreset} onLoadPreset={handleLoadPreset} onDeletePreset={handleDeletePreset} onDownloadTemplate={handleDownloadExcelTemplate} onImportClick={() => fileInputRef.current.click()} onExportPDF={handleExportPDF} presets={presets} selectedPresetId={selectedPresetId} setSelectedPresetId={setSelectedPresetId} />
-                        ) : (
-                            <PresentationView state={state} onStateUpdate={handleStateUpdate} isReadOnly={false} onSwitchToPlanning={() => setMode('planning')} />
-                        )}
-                        <input type="file" accept=".xlsx, .xls" ref={fileInputRef} className="hidden-file-input" onChange={handleImportExcel} />
                     </div>
-                </div>
+                </>
             );
         };
 
@@ -531,9 +592,9 @@
             );
         };
 
-        const TechDetailsDisplay = ({ technical, colorClass = "text-blue-300" }) => { const techKeyTranslations = { projection: 'Projeção', sound: 'Som', microphone: 'Microfone', lighting: 'Iluminação', camera: 'Câmera' }; const techDetails = technical ? Object.entries(technical).filter(([key, value]) => value && value !== '-') : []; if (techDetails.length === 0) return null; return ( <div> <h4 className={`font-semibold ${colorClass} mb-1 flex items-center gap-2`}><icons.Settings size={16} /> Detalhes Técnicos</h4> <div className="flex flex-col space-y-1 text-sm text-gray-300"> {techDetails.map(([key, value]) => ( <div key={key} className="flex items-center gap-2"> {key === 'projection' && <icons.Monitor size={14} />} {key === 'sound' && <icons.Volume2 size={14} />} {key === 'microphone' && <icons.Mic size={14} />} {key === 'lighting' && <icons.Lightbulb size={14} />} {key === 'camera' && <icons.Camera size={14} />} <span>{techKeyTranslations[key] || key}:</span> <span className="font-semibold text-white">{value}</span> </div> ))} </div> </div> ); };
+        const TechDetailsDisplay = ({ technical, colorClass = "text-blue-300" }) => { const techKeyTranslations = { projection: 'Projeção', sound: 'Som', microphone: 'Microfone', lighting: 'Iluminação', camera: 'Câmera' }; const techDetails = technical ? Object.entries(technical).filter(([key, value]) => value && value.trim() !== '-') : []; if (techDetails.length === 0) return null; return ( <div> <h4 className={`font-semibold ${colorClass} mb-1 flex items-center gap-2`}><icons.Settings size={16} /> Detalhes Técnicos</h4> <div className="flex flex-col space-y-1 text-sm text-gray-300"> {techDetails.map(([key, value]) => ( <div key={key} className="flex items-center gap-2"> {key === 'projection' && <icons.Monitor size={14} />} {key === 'sound' && <icons.Volume2 size={14} />} {key === 'microphone' && <icons.Mic size={14} />} {key === 'lighting' && <icons.Lightbulb size={14} />} {key === 'camera' && <icons.Camera size={14} />} <span>{techKeyTranslations[key] || key}:</span> <span className="font-semibold text-white">{value}</span> </div> ))} </div> </div> ); };
 
-        const PresentationView = ({ state, onStateUpdate, isReadOnly, onSwitchToPlanning }) => {
+        const PresentationView = ({ state, onStateUpdate, isReadOnly, onSwitchToPlanning, onExportPDF }) => {
             const [displayTime, setDisplayTime] = useState(0);
             const { items, cultInfo, liveState } = state;
             const { currentItemIndex, isRunning, itemStartTime, accumulatedTime, actualStartTime } = liveState;
@@ -541,6 +602,7 @@
             const nextItem = items && items[currentItemIndex + 1];
             const [announcementText, setAnnouncementText] = useState("");
             const [announcementDuration, setAnnouncementDuration] = useState(10);
+            const { modalState, showModal, hideModal } = useModal();
 
             useEffect(() => { let interval; if (isRunning) { interval = setInterval(() => { const elapsed = itemStartTime ? (Date.now() - itemStartTime) / 1000 : 0; setDisplayTime(accumulatedTime + elapsed); }, 250); } else { setDisplayTime(accumulatedTime); } return () => clearInterval(interval); }, [isRunning, itemStartTime, accumulatedTime, currentItemIndex]);
             const formatTime = (seconds) => { if (!seconds || seconds < 0) seconds = 0; const mins = Math.floor(seconds / 60); const secs = Math.floor(seconds % 60); return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`; };
@@ -554,36 +616,78 @@
             const handleResetTimer = () => { onStateUpdate(prevState => ({ ...prevState, liveState: { ...prevState.liveState, isRunning: false, itemStartTime: null, accumulatedTime: 0 } })); };
             const handleNext = () => { if (!items || currentItemIndex >= items.length - 1) return; onStateUpdate(prevState => { const { items, liveState } = prevState; const now = new Date().toISOString(); const elapsed = liveState.isRunning && liveState.itemStartTime ? (Date.now() - liveState.itemStartTime) / 1000 : 0; const finalDuration = liveState.accumulatedTime + elapsed; const newItems = items.map((item, index) => { if (index === liveState.currentItemIndex) { return { ...item, completed: true, actualDuration: finalDuration, actualEndTime: now }; } if (index === liveState.currentItemIndex + 1) { return { ...item, actualStartTime: now }; } return item; }); return { ...prevState, items: newItems, liveState: { ...liveState, currentItemIndex: liveState.currentItemIndex + 1, isRunning: true, itemStartTime: Date.now(), accumulatedTime: 0 } }; }); };
             const handlePrevious = () => { if (currentItemIndex <= 0) return; onStateUpdate(prevState => { const newItems = prevState.items.map((item, index) => { if (index === prevState.liveState.currentItemIndex - 1) { return { ...item, completed: false, actualDuration: null, actualStartTime: null, actualEndTime: null }; } return item; }); return { ...prevState, items: newItems, liveState: { ...prevState.liveState, currentItemIndex: prevState.liveState.currentItemIndex - 1, isRunning: false, itemStartTime: null, accumulatedTime: 0 } }; }); };
-            const handleResetWorship = () => { if (confirm("Tem certeza que deseja reiniciar o culto? Todo o progresso será perdido.")) { onStateUpdate(prevState => { const resetItems = prevState.items.map(item => ({ ...item, completed: false, actualDuration: null, actualStartTime: null, actualEndTime: null })); return { ...prevState, items: resetItems, liveState: { currentItemIndex: 0, isRunning: false, itemStartTime: null, accumulatedTime: 0, actualStartTime: null, announcement: null } }; }); } };
+            const handleResetWorship = () => {
+                showModal({
+                    title: "Reiniciar Culto",
+                    content: <p>Tem certeza que deseja reiniciar o culto? Todo o progresso será perdido.</p>,
+                    footer: <>
+                        <button onClick={hideModal} className="px-4 py-2 bg-gray-200 rounded-md">Cancelar</button>
+                        <button onClick={() => {
+                            onStateUpdate(prevState => {
+                                const resetItems = prevState.items.map(item => ({ ...item, completed: false, actualDuration: null, actualStartTime: null, actualEndTime: null }));
+                                return { ...prevState, items: resetItems, liveState: { currentItemIndex: 0, isRunning: false, itemStartTime: null, accumulatedTime: 0, actualStartTime: null, announcement: null } };
+                            });
+                            hideModal();
+                        }} className="px-4 py-2 bg-blue-600 text-white rounded-md">Reiniciar</button>
+                    </>
+                });
+            };
             const handleSendAnnouncement = () => { if (!announcementText.trim()) return; onStateUpdate(prevState => ({ ...prevState, liveState: { ...prevState.liveState, announcement: { message: announcementText, duration: announcementDuration, timestamp: new Date().toISOString() } } })); setAnnouncementText(""); };
             
             const handleEndWorship = () => {
-                if (!confirm("Tem certeza que deseja encerrar o culto?")) return;
-                onStateUpdate(prevState => {
-                    const { items, liveState } = prevState;
-                    const now = Date.now();
-                    const elapsed = liveState.isRunning && liveState.itemStartTime ? (now - liveState.itemStartTime) / 1000 : 0;
-                    const finalDuration = liveState.accumulatedTime + elapsed;
-                    const newItems = items.map((item, index) => index === liveState.currentItemIndex ? { ...item, completed: true, actualDuration: finalDuration, actualEndTime: new Date().toISOString() } : item);
-                    return { ...prevState, items: newItems, liveState: { ...liveState, currentItemIndex: items.length, isRunning: false } };
+                showModal({
+                    title: "Encerrar Culto",
+                    content: <p>Tem certeza que deseja encerrar o culto?</p>,
+                    footer: <>
+                        <button onClick={hideModal} className="px-4 py-2 bg-gray-200 rounded-md">Cancelar</button>
+                        <button onClick={() => {
+                            onStateUpdate(prevState => {
+                                const { items, liveState } = prevState;
+                                const now = Date.now();
+                                const elapsed = liveState.isRunning && liveState.itemStartTime ? (now - liveState.itemStartTime) / 1000 : 0;
+                                const finalDuration = liveState.accumulatedTime + elapsed;
+                                const newItems = items.map((item, index) => index === liveState.currentItemIndex ? { ...item, completed: true, actualDuration: finalDuration, actualEndTime: new Date().toISOString() } : item);
+                                return { ...prevState, items: newItems, liveState: { ...liveState, currentItemIndex: items.length, isRunning: false } };
+                            });
+                            hideModal();
+                        }} className="px-4 py-2 bg-red-600 text-white rounded-md">Encerrar</button>
+                    </>
                 });
             };
 
             if (!currentItem) { 
                 return (
-                    <div className="text-center p-10 bg-white rounded-lg shadow-md">
-                        <h2 className="text-2xl font-bold">Culto Finalizado.</h2>
-                        {!isReadOnly && (
-                            <div className="mt-6 flex justify-center gap-4">
-                                <button onClick={handleResetWorship} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2">
-                                    <icons.RotateCcw size={18}/> Reiniciar Culto
-                                </button>
-                                <button onClick={onSwitchToPlanning} className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center gap-2">
-                                    <icons.Settings size={18}/> Voltar ao Planejamento
-                                </button>
-                            </div>
-                        )}
-                    </div>
+                    <>
+                        <Modal {...modalState} onClose={hideModal} />
+                        <div className="text-center p-10 bg-white rounded-lg shadow-md">
+                            <h2 className="text-2xl font-bold mb-6">Culto Finalizado.</h2>
+                            {!isReadOnly && (
+                                <div className="flex justify-center items-center gap-4">
+                                    <button
+                                        onClick={onExportPDF}
+                                        className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                    >
+                                        <icons.FileText size={18}/>
+                                        Exportar Relatório
+                                    </button>
+                                    <button
+                                        onClick={handleResetWorship}
+                                        className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                    >
+                                        <icons.RotateCcw size={18}/>
+                                        Reiniciar Culto
+                                    </button>
+                                    <button
+                                        onClick={onSwitchToPlanning}
+                                        className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                                    >
+                                        <icons.Settings size={18}/>
+                                        Voltar ao Planejamento
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </>
                 )
             }
             
@@ -592,6 +696,8 @@
             const timelineBgColor = isReadOnly ? 'bg-gray-800/50' : 'bg-gray-800';
             
             return (
+                <>
+                <Modal {...modalState} onClose={hideModal} />
                 <div className="space-y-4">
                     <div className={`${mainBgColor} ${mainContentColor} rounded-lg p-6 shadow-xl`}>
                         <div className="flex justify-between items-start">
@@ -600,7 +706,7 @@
                                 <p className="text-lg lg:text-2xl text-blue-300">{currentItem.responsible}</p>
                             </div>
                             <div className="text-right">
-                                <div className="text-sm lg:text-base text-gray-400">Horário Previsto</div>
+                                <div className="text-sm lg:text-base text-gray-300">Horário Previsto</div>
                                 <div className="text-2xl lg:text-4xl font-mono text-white">{currentItem.startTime}</div>
                             </div>
                         </div>
@@ -609,7 +715,7 @@
                             <div className="text-gray-400 lg:text-lg">Planejado: {formatTime(plannedDurationInSeconds)}</div>
                         </div>
                         <div className="w-full bg-gray-700 rounded-full h-4 mb-6"><div className={`h-4 rounded-full transition-all duration-500 ${isOvertime ? 'bg-red-500' : 'bg-green-500'}`} style={{ width: `${progressPercentage}%` }}/></div>
-                        {(currentItem.description || (currentItem.technical && Object.values(currentItem.technical).some(v => v && v !== '-'))) && ( <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-black/20 p-4 rounded-lg"> {currentItem.description && ( <div> <h4 className="font-semibold text-blue-300 mb-1 flex items-center gap-2"><icons.Info size={16} /> Descrição</h4> <p className="text-sm text-gray-300 whitespace-pre-wrap">{currentItem.description}</p> </div> )} <TechDetailsDisplay technical={currentItem.technical} /> </div> )}
+                        {(currentItem.description || (currentItem.technical && Object.values(currentItem.technical).some(v => v && v.trim() !== '-'))) && ( <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-black/20 p-4 rounded-lg"> {currentItem.description && ( <div> <h4 className="font-semibold text-blue-300 mb-1 flex items-center gap-2"><icons.Info size={16} /> Descrição</h4> <p className="text-sm text-gray-300 whitespace-pre-wrap">{currentItem.description}</p> </div> )} <TechDetailsDisplay technical={currentItem.technical} /> </div> )}
                         {!isReadOnly && ( <div className="flex justify-center flex-wrap gap-4"> <button onClick={handlePrevious} className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg disabled:opacity-50" disabled={currentItemIndex === 0}>Anterior</button> <button onClick={handleToggleTimer} className={`px-6 py-2 rounded-lg flex items-center gap-2 text-lg ${isRunning ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600'}`}> {isRunning ? <icons.Pause size={20}/> : <icons.Play size={20}/>} {isRunning ? 'Pausar' : 'Iniciar'} </button> <button onClick={handleResetTimer} className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg flex items-center gap-2"><icons.RotateCcw size={18}/> Resetar Timer</button> {currentItemIndex < items.length - 1 ? (<button onClick={handleNext} className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg">Próximo</button>) : (<button onClick={handleEndWorship} className="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg flex items-center gap-2"> <icons.CheckCircle size={18}/> Encerrar Culto</button>)} <button onClick={handleResetWorship} className="bg-red-800 hover:bg-red-700 px-4 py-2 rounded-lg flex items-center gap-2"><icons.Power size={18}/> Reiniciar Culto</button> </div> )}
                     </div>
                     {nextItem && (
@@ -650,6 +756,7 @@
                         <div className="flex overflow-x-auto gap-3 pb-2"> {items && items.map((item, index) => { const isCurrent = index === currentItemIndex; const isNext = index === currentItemIndex + 1; const borderColor = isCurrent ? 'border-blue-500' : isNext ? 'border-yellow-400' : 'border-gray-600'; const bgColor = isCurrent ? 'bg-gray-700' : 'bg-gray-700/50'; return ( <div key={item.id} className={`flex-shrink-0 w-48 p-3 rounded-lg border-2 transition-all ${borderColor} ${bgColor}`}> <div className="flex justify-between items-start"> <span className="text-xs font-mono text-gray-300">{item.startTime}</span> {item.completed && <icons.CheckCircle size={16} className="text-green-400"/>} </div> <h4 className={`font-semibold text-sm mb-1 ${item.completed ? 'text-gray-400 line-through' : 'text-white'}`}>{item.title}</h4> <div className="text-xs text-gray-400 flex items-center gap-1"><icons.Clock size={12} /> {item.duration} min</div> </div> ); })} </div>
                     </div>
                 </div>
+                </>
             );
         };
         
