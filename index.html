@@ -265,251 +265,315 @@
         };
 
         const CoordinatorController = ({ state, handleStateUpdate, presets, fetchPresets }) => {
-            const [isSaving, setIsSaving] = useState(false);
-            const [mode, setMode] = useState('planning');
-            const [showTechnical, setShowTechnical] = useState(true);
-            const [selectedPresetId, setSelectedPresetId] = useState('');
-            const fileInputRef = useRef(null);
-            const { firestore, db, appId } = window;
-            const { modalState, showModal, hideModal } = useModal();
+    const [isSaving, setIsSaving] = useState(false);
+    const [mode, setMode] = useState('planning');
+    const [showTechnical, setShowTechnical] = useState(true);
+    const [selectedPresetId, setSelectedPresetId] = useState('');
+    const fileInputRef = useRef(null);
+    const { firestore, db, appId } = window;
+    const { modalState, showModal, hideModal } = useModal();
 
-            useEffect(() => {
-                const timeoutId = setTimeout(() => setIsSaving(false), 500);
-                return () => clearTimeout(timeoutId);
-            }, [state]);
+    useEffect(() => {
+        const timeoutId = setTimeout(() => setIsSaving(false), 500);
+        return () => clearTimeout(timeoutId);
+    }, [state]);
 
-            const calculateStartTimes = (items, startTime) => {
-                if (!startTime) { startTime = '00:00' }
-                let cumulativeTime = new Date(`1970-01-01T${startTime}:00`);
-                if (isNaN(cumulativeTime)) return items.map(item => ({...item, startTime: '--:--'}));
-                return items.map(item => {
-                    const itemStartTime = cumulativeTime.toTimeString().slice(0, 5);
-                    cumulativeTime.setMinutes(cumulativeTime.getMinutes() + (Number(item.duration) || 0));
-                    return { ...item, startTime: itemStartTime };
-                });
-            };
+    const calculateStartTimes = (items, startTime) => {
+        if (!startTime) { startTime = '00:00' }
+        let cumulativeTime = new Date(`1970-01-01T${startTime}:00`);
+        if (isNaN(cumulativeTime)) return items.map(item => ({...item, startTime: '--:--'}));
+        return items.map(item => {
+            const itemStartTime = cumulativeTime.toTimeString().slice(0, 5);
+            cumulativeTime.setMinutes(cumulativeTime.getMinutes() + (Number(item.duration) || 0));
+            return { ...item, startTime: itemStartTime };
+        });
+    };
 
-            const handleCultInfoChange = (field, value) => {
-                handleStateUpdate(prevState => {
-                    const newCultInfo = { ...prevState.cultInfo, [field]: value };
-                    if (field === 'startTime') {
-                        const newItems = calculateStartTimes(prevState.items, value);
-                        return { ...prevState, cultInfo: newCultInfo, items: newItems };
-                    }
-                    return { ...prevState, cultInfo: newCultInfo };
-                });
-            };
+    const handleCultInfoChange = (field, value) => {
+        handleStateUpdate(prevState => {
+            const newCultInfo = { ...prevState.cultInfo, [field]: value };
+            if (field === 'startTime') {
+                const newItems = calculateStartTimes(prevState.items, value);
+                return { ...prevState, cultInfo: newCultInfo, items: newItems };
+            }
+            return { ...prevState, cultInfo: newCultInfo };
+        });
+    };
 
-            const addItem = () => {
-                handleStateUpdate(prevState => {
-                    const newItem = { id: crypto.randomUUID(), title: 'Novo Momento', duration: 5, type: 'palavra', responsible: 'A definir', description: '', technical: { projection: '-', sound: '-', microphone: '-', lighting: '-', camera: '-' }, completed: false, actualDuration: null, actualStartTime: null, actualEndTime: null };
-                    const newItems = calculateStartTimes([...prevState.items, newItem], prevState.cultInfo.startTime);
-                    return { ...prevState, items: newItems };
-                });
-            };
+    const addItem = () => {
+        handleStateUpdate(prevState => {
+            const newItem = { id: crypto.randomUUID(), title: 'Novo Momento', duration: 5, type: 'palavra', responsible: 'A definir', description: '', technical: { projection: '-', sound: '-', microphone: '-', lighting: '-', camera: '-' }, completed: false, actualDuration: null, actualStartTime: null, actualEndTime: null };
+            const newItems = calculateStartTimes([...prevState.items, newItem], prevState.cultInfo.startTime);
+            return { ...prevState, items: newItems };
+        });
+    };
 
-            const updateItem = (id, updates) => {
-                handleStateUpdate(prevState => {
-                    let newItems = prevState.items.map(item => item.id === id ? { ...item, ...updates } : item);
-                    if (updates.duration !== undefined) { newItems = calculateStartTimes(newItems, prevState.cultInfo.startTime); }
-                    return { ...prevState, items: newItems };
-                });
-            };
-            
-            const deleteItem = (id) => {
-                showModal({
-                    title: "Excluir Item",
-                    content: <p>Tem certeza que deseja excluir este item?</p>,
-                    footer: <>
-                        <button onClick={hideModal} className="px-4 py-2 bg-gray-200 rounded-md">Cancelar</button>
-                        <button onClick={() => {
-                            handleStateUpdate(prevState => {
-                                const newItems = calculateStartTimes(prevState.items.filter(item => item.id !== id), prevState.cultInfo.startTime);
-                                return { ...prevState, items: newItems };
-                            });
-                            hideModal();
-                        }} className="px-4 py-2 bg-red-600 text-white rounded-md">Excluir</button>
-                    </>
-                });
-            };
-            
-            const moveItem = (index, direction) => {
-                handleStateUpdate(prevState => {
-                    const currentItems = [...prevState.items];
-                    const newIndex = index + direction;
-                    if (newIndex < 0 || newIndex >= currentItems.length) return prevState;
-                    const item = currentItems.splice(index, 1)[0];
-                    currentItems.splice(newIndex, 0, item);
-                    const newItems = calculateStartTimes(currentItems, prevState.cultInfo.startTime);
-                    return { ...prevState, items: newItems };
-                });
-            };
-
-            const handleSavePreset = async () => {
-                const presetName = prompt("Digite um nome para este preset:", "Modelo de Culto Padrão");
-                if (presetName === null || !presetName.trim()) return;
-                const worshipDataBaseRef = firestore.doc(db, "artifacts", appId, "public", "data", "worship-order", "singleton");
-                const presetsCollectionRef = firestore.collection(worshipDataBaseRef, "presets");
-                try {
-                    const presetData = { name: presetName.trim(), savedAt: new Date().toISOString(), items: state.items, cultInfo: state.cultInfo };
-                    await firestore.addDoc(presetsCollectionRef, presetData);
-                    alert(`Preset "${presetName.trim()}" salvo com sucesso!`);
-                    fetchPresets(); 
-                } catch (error) { console.error("Erro ao salvar o preset:", error); alert(`Erro ao salvar o preset: ${error.message}`); }
-            };
-            
-            const handleLoadPreset = (presetId) => {
-                if (!presetId) return;
-                const preset = presets.find(p => p.id === presetId);
-                if (preset) {
-                    showModal({
-                        title: "Carregar Preset",
-                        content: <p>Isso substituirá a ordem de culto atual. Deseja continuar?</p>,
-                        footer: <>
-                            <button onClick={hideModal} className="px-4 py-2 bg-gray-200 rounded-md">Cancelar</button>
-                            <button onClick={() => {
-                                const newItems = calculateStartTimes(preset.items, preset.cultInfo.startTime);
-                                handleStateUpdate({ ...state, items: newItems, cultInfo: preset.cultInfo });
-                                hideModal();
-                            }} className="px-4 py-2 bg-yellow-500 text-white rounded-md">Carregar</button>
-                        </>
+    const updateItem = (id, updates) => {
+        handleStateUpdate(prevState => {
+            let newItems = prevState.items.map(item => item.id === id ? { ...item, ...updates } : item);
+            if (updates.duration !== undefined) { newItems = calculateStartTimes(newItems, prevState.cultInfo.startTime); }
+            return { ...prevState, items: newItems };
+        });
+    };
+    
+    const deleteItem = (id) => {
+        showModal({
+            title: "Excluir Item",
+            content: <p>Tem certeza que deseja excluir este item?</p>,
+            footer: <>
+                <button onClick={hideModal} className="px-4 py-2 bg-gray-200 rounded-md">Cancelar</button>
+                <button onClick={() => {
+                    handleStateUpdate(prevState => {
+                        const newItems = calculateStartTimes(prevState.items.filter(item => item.id !== id), prevState.cultInfo.startTime);
+                        return { ...prevState, items: newItems };
                     });
-                }
+                    hideModal();
+                }} className="px-4 py-2 bg-red-600 text-white rounded-md">Excluir</button>
+            </>
+        });
+    };
+    
+    const moveItem = (index, direction) => {
+        handleStateUpdate(prevState => {
+            const currentItems = [...prevState.items];
+            const newIndex = index + direction;
+            if (newIndex < 0 || newIndex >= currentItems.length) return prevState;
+            const item = currentItems.splice(index, 1)[0];
+            currentItems.splice(newIndex, 0, item);
+            const newItems = calculateStartTimes(currentItems, prevState.cultInfo.startTime);
+            return { ...prevState, items: newItems };
+        });
+    };
+
+    // ✅ NOVA FUNÇÃO: Lógica isolada para salvar um NOVO preset
+    const saveAsNewPreset = async () => {
+        const presetName = prompt("Digite um nome para o novo preset:", "Modelo de Culto Padrão");
+        if (presetName === null || !presetName.trim()) return;
+
+        const worshipDataBaseRef = firestore.doc(db, "artifacts", appId, "public", "data", "worship-order", "singleton");
+        const presetsCollectionRef = firestore.collection(worshipDataBaseRef, "presets");
+        try {
+            const presetData = {
+                name: presetName.trim(),
+                savedAt: firestore.serverTimestamp(), // Usando timestamp do servidor
+                items: state.items,
+                cultInfo: state.cultInfo
             };
-            
-            const handleDeletePreset = async () => {
-                if (!selectedPresetId) { alert("Por favor, selecione um preset da lista para excluir."); return; }
-                const presetToDelete = presets.find(p => p.id === selectedPresetId);
-                if (!presetToDelete) return;
-                showModal({
-                    title: "Excluir Preset",
-                    content: <p>Tem certeza que deseja excluir o preset "{presetToDelete.name}"?</p>,
-                    footer: <>
+            const docRef = await firestore.addDoc(presetsCollectionRef, presetData);
+            alert(`Preset "${presetName.trim()}" salvo com sucesso!`);
+            await fetchPresets();
+            setSelectedPresetId(docRef.id); // Seleciona o novo preset criado
+        } catch (error) {
+            console.error("Erro ao salvar o novo preset:", error);
+            alert(`Erro ao salvar o novo preset: ${error.message}`);
+        }
+    };
+
+    // ✅ FUNÇÃO MODIFICADA: Agora verifica se um preset está selecionado
+    const handleSavePreset = async () => {
+        if (selectedPresetId) {
+            const selectedPreset = presets.find(p => p.id === selectedPresetId);
+            if (!selectedPreset) {
+                console.error("Preset selecionado não encontrado.");
+                await saveAsNewPreset(); // Se não encontrar, salva como novo
+                return;
+            }
+
+            showModal({
+                title: "Salvar Preset",
+                content: <p>Você deseja atualizar o preset <strong>"{selectedPreset.name}"</strong> ou salvar como um novo?</p>,
+                footer: (
+                    <>
                         <button onClick={hideModal} className="px-4 py-2 bg-gray-200 rounded-md">Cancelar</button>
                         <button onClick={async () => {
-                            const worshipDataBaseRef = firestore.doc(db, "artifacts", appId, "public", "data", "worship-order", "singleton");
-                            const presetsCollectionRef = firestore.collection(worshipDataBaseRef, "presets");
-                            const docRef = firestore.doc(presetsCollectionRef, selectedPresetId);
-                            await firestore.deleteDoc(docRef);
-                            setSelectedPresetId('');
-                            fetchPresets();
-                            hideModal();
-                        }} className="px-4 py-2 bg-red-600 text-white rounded-md">Excluir</button>
-                    </>
-                });
-            };
-
-            const handleDownloadExcelTemplate = () => {
-                const data = [{ title: "Música de Abertura", duration: 10, type: "música", responsible: "Ministério de Louvor", description: "Usar playback e projeção com letra." }];
-                const worksheet = XLSX.utils.json_to_sheet(data);
-                const workbook = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(workbook, worksheet, "Ordem de Culto");
-                worksheet["!cols"] = [ { wch: 30 }, { wch: 10 }, { wch: 15 }, { wch: 25 }, { wch: 50 }, ];
-                XLSX.writeFile(workbook, "modelo_ordem_de_culto.xlsx");
-            };
-
-            const handleImportExcel = (event) => {
-                const file = event.target.files[0];
-                if (file) {
-                    showModal({
-                        title: "Importar Planilha",
-                        content: <p>Isso substituirá a ordem de culto atual. Deseja continuar?</p>,
-                        footer: <>
-                            <button onClick={() => { event.target.value = null; hideModal(); }} className="px-4 py-2 bg-gray-200 rounded-md">Cancelar</button>
-                            <button onClick={() => {
-                                const reader = new FileReader();
-                                reader.onload = (e) => {
-                                    try {
-                                        const data = e.target.result;
-                                        const workbook = XLSX.read(data, { type: 'array' });
-                                        const sheetName = workbook.SheetNames[0];
-                                        const worksheet = workbook.Sheets[sheetName];
-                                        const json = XLSX.utils.sheet_to_json(worksheet);
-                                        const newItemsFromExcel = json.map(row => ({ id: crypto.randomUUID(), title: row.title || 'Sem Título', duration: parseInt(row.duration, 10) || 5, type: row.type || 'palavra', responsible: row.responsible || 'A definir', description: row.description || '', technical: { projection: '-', sound: '-', microphone: '-', lighting: '-', camera: '-' }, completed: false, actualDuration: null, actualStartTime: null, actualEndTime: null }));
-                                        handleStateUpdate(prevState => ({ ...prevState, items: calculateStartTimes(newItemsFromExcel, prevState.cultInfo.startTime) }));
-                                    } catch(error) { alert("Ocorreu um erro ao ler o arquivo Excel."); console.error("Erro no SheetJS:", error); }
-                                };
-                                reader.readAsArrayBuffer(file);
-                                event.target.value = null;
                                 hideModal();
-                            }} className="px-4 py-2 bg-green-600 text-white rounded-md">Importar</button>
-                        </>
-                    });
-                }
-            };
+                                await saveAsNewPreset();
+                            }} className="px-4 py-2 bg-green-600 text-white rounded-md">
+                            Salvar como Novo
+                        </button>
+                        <button onClick={async () => {
+                                const worshipDataBaseRef = firestore.doc(db, "artifacts", appId, "public", "data", "worship-order", "singleton");
+                                const presetDocRef = firestore.doc(worshipDataBaseRef, "presets", selectedPresetId);
+                                try {
+                                    const presetData = {
+                                        name: selectedPreset.name,
+                                        savedAt: firestore.serverTimestamp(),
+                                        items: state.items,
+                                        cultInfo: state.cultInfo
+                                    };
+                                    await firestore.setDoc(presetDocRef, presetData);
+                                    alert(`Preset "${selectedPreset.name}" atualizado com sucesso!`);
+                                    hideModal();
+                                    fetchPresets();
+                                } catch (error) {
+                                    console.error("Erro ao atualizar o preset:", error);
+                                    alert(`Erro ao atualizar o preset: ${error.message}`);
+                                    hideModal();
+                                }
+                            }} className="px-4 py-2 bg-blue-600 text-white rounded-md">
+                            Atualizar Existente
+                        </button>
+                    </>
+                ),
+            });
+        } else {
+            // Nenhum preset selecionado, apenas salva como novo
+            await saveAsNewPreset();
+        }
+    };
+    
+    const handleLoadPreset = (presetId) => {
+        if (!presetId) return;
+        const preset = presets.find(p => p.id === presetId);
+        if (preset) {
+            showModal({
+                title: "Carregar Preset",
+                content: <p>Isso substituirá a ordem de culto atual. Deseja continuar?</p>,
+                footer: <>
+                    <button onClick={hideModal} className="px-4 py-2 bg-gray-200 rounded-md">Cancelar</button>
+                    <button onClick={() => {
+                        const newItems = calculateStartTimes(preset.items, preset.cultInfo.startTime);
+                        handleStateUpdate({ ...state, items: newItems, cultInfo: preset.cultInfo });
+                        hideModal();
+                    }} className="px-4 py-2 bg-yellow-500 text-white rounded-md">Carregar</button>
+                </>
+            });
+        }
+    };
+    
+    const handleDeletePreset = async () => {
+        if (!selectedPresetId) { alert("Por favor, selecione um preset da lista para excluir."); return; }
+        const presetToDelete = presets.find(p => p.id === selectedPresetId);
+        if (!presetToDelete) return;
+        showModal({
+            title: "Excluir Preset",
+            content: <p>Tem certeza que deseja excluir o preset "{presetToDelete.name}"?</p>,
+            footer: <>
+                <button onClick={hideModal} className="px-4 py-2 bg-gray-200 rounded-md">Cancelar</button>
+                <button onClick={async () => {
+                    const worshipDataBaseRef = firestore.doc(db, "artifacts", appId, "public", "data", "worship-order", "singleton");
+                    const presetsCollectionRef = firestore.collection(worshipDataBaseRef, "presets");
+                    const docRef = firestore.doc(presetsCollectionRef, selectedPresetId);
+                    await firestore.deleteDoc(docRef);
+                    setSelectedPresetId('');
+                    fetchPresets();
+                    hideModal();
+                }} className="px-4 py-2 bg-red-600 text-white rounded-md">Excluir</button>
+            </>
+        });
+    };
 
-            const handleExportPDF = () => {
-                const doc = new window.jsPDF();
-                const cultInfo = state.cultInfo;
-                const items = state.items;
-                const actualStartTime = state.liveState.actualStartTime ? new Date(state.liveState.actualStartTime).toLocaleTimeString('pt-BR') : 'Não iniciado';
+    const handleDownloadExcelTemplate = () => {
+        const data = [{ title: "Música de Abertura", duration: 10, type: "música", responsible: "Ministério de Louvor", description: "Usar playback e projeção com letra." }];
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Ordem de Culto");
+        worksheet["!cols"] = [ { wch: 30 }, { wch: 10 }, { wch: 15 }, { wch: 25 }, { wch: 50 }, ];
+        XLSX.writeFile(workbook, "modelo_ordem_de_culto.xlsx");
+    };
 
-                doc.setFontSize(18);
-                doc.text("Relatório do Culto", 14, 22);
-                doc.setFontSize(11);
-                doc.text(`Data: ${cultInfo.date}`, 14, 30);
-                doc.text(`Pregador: ${cultInfo.pregador}`, 14, 36);
-                doc.text(`Início Real do Culto: ${actualStartTime}`, 14, 42);
+    const handleImportExcel = (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            showModal({
+                title: "Importar Planilha",
+                content: <p>Isso substituirá a ordem de culto atual. Deseja continuar?</p>,
+                footer: <>
+                    <button onClick={() => { event.target.value = null; hideModal(); }} className="px-4 py-2 bg-gray-200 rounded-md">Cancelar</button>
+                    <button onClick={() => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            try {
+                                const data = e.target.result;
+                                const workbook = XLSX.read(data, { type: 'array' });
+                                const sheetName = workbook.SheetNames[0];
+                                const worksheet = workbook.Sheets[sheetName];
+                                const json = XLSX.utils.sheet_to_json(worksheet);
+                                const newItemsFromExcel = json.map(row => ({ id: crypto.randomUUID(), title: row.title || 'Sem Título', duration: parseInt(row.duration, 10) || 5, type: row.type || 'palavra', responsible: row.responsible || 'A definir', description: row.description || '', technical: { projection: '-', sound: '-', microphone: '-', lighting: '-', camera: '-' }, completed: false, actualDuration: null, actualStartTime: null, actualEndTime: null }));
+                                handleStateUpdate(prevState => ({ ...prevState, items: calculateStartTimes(newItemsFromExcel, prevState.cultInfo.startTime) }));
+                            } catch(error) { alert("Ocorreu um erro ao ler o arquivo Excel."); console.error("Erro no SheetJS:", error); }
+                        };
+                        reader.readAsArrayBuffer(file);
+                        event.target.value = null;
+                        hideModal();
+                    }} className="px-4 py-2 bg-green-600 text-white rounded-md">Importar</button>
+                </>
+            });
+        }
+    };
 
-                const tableColumn = ["Item", "Duração Planejada", "Duração Real", "Início Real", "Fim Real", "Desvio"];
-                const tableRows = [];
+    const handleExportPDF = () => {
+        const doc = new window.jsPDF();
+        const cultInfo = state.cultInfo;
+        const items = state.items;
+        const actualStartTime = state.liveState.actualStartTime ? new Date(state.liveState.actualStartTime).toLocaleTimeString('pt-BR') : 'Não iniciado';
 
-                items.forEach(item => {
-                    const planned = item.duration || 0;
-                    const actual = item.actualDuration ? (item.actualDuration / 60).toFixed(2) : 'N/A';
-                    const deviation = item.completed ? (planned - actual).toFixed(2) : 'N/A';
-                    
-                    const rowData = [
-                        item.title,
-                        `${planned} min`,
-                        item.completed ? `${actual} min` : 'N/A',
-                        item.actualStartTime ? new Date(item.actualStartTime).toLocaleTimeString('pt-BR') : 'N/A',
-                        item.actualEndTime ? new Date(item.actualEndTime).toLocaleTimeString('pt-BR') : 'N/A',
-                        item.completed ? `${deviation} min` : 'N/A'
-                    ];
-                    tableRows.push(rowData);
-                });
+        doc.setFontSize(18);
+        doc.text("Relatório do Culto", 14, 22);
+        doc.setFontSize(11);
+        doc.text(`Data: ${cultInfo.date}`, 14, 30);
+        doc.text(`Pregador: ${cultInfo.pregador}`, 14, 36);
+        doc.text(`Início Real do Culto: ${actualStartTime}`, 14, 42);
 
-                doc.autoTable({
-                    head: [tableColumn],
-                    body: tableRows,
-                    startY: 50,
-                });
-                
-                doc.save(`relatorio_culto_${cultInfo.date.replace(/\//g, '-')}.pdf`);
-            };
+        const tableColumn = ["Item", "Duração Planejada", "Duração Real", "Início Real", "Fim Real", "Desvio"];
+        const tableRows = [];
+
+        items.forEach(item => {
+            const planned = item.duration || 0;
+            const actual = item.actualDuration ? (item.actualDuration / 60).toFixed(2) : 'N/A';
+            const deviation = item.completed ? (planned - actual).toFixed(2) : 'N/A';
             
-            return (
-                <>
-                    <Modal {...modalState} onClose={hideModal} />
-                    <div className="min-h-screen bg-gray-100 p-4 lg:p-8">
-                        <div className="max-w-screen-2xl mx-auto">
-                            <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
-                                <h1 className="text-3xl lg:text-4xl font-bold text-gray-800">Gestor de Culto</h1>
-                                <div className="flex items-center gap-4">
-                                    <Clock />
-                                    <div className="flex items-center gap-2">
-                                        <button onClick={() => setShowTechnical(!showTechnical)} className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-md flex items-center gap-2 text-sm">
-                                            <icons.Monitor size={16} /> <span>Técnico</span>
-                                        </button>
-                                        <button onClick={() => setMode(mode === 'planning' ? 'presentation' : 'planning')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center gap-2">
-                                            {mode === 'planning' ? <icons.Play size={18}/> : <icons.Settings size={18}/>}
-                                            <span>{mode === 'planning' ? 'Modo Ao Vivo' : 'Planejamento'}</span>
-                                        </button>
-                                    </div>
-                                </div>
+            const rowData = [
+                item.title,
+                `${planned} min`,
+                item.completed ? `${actual} min` : 'N/A',
+                item.actualStartTime ? new Date(item.actualStartTime).toLocaleTimeString('pt-BR') : 'N/A',
+                item.actualEndTime ? new Date(item.actualEndTime).toLocaleTimeString('pt-BR') : 'N/A',
+                item.completed ? `${deviation} min` : 'N/A'
+            ];
+            tableRows.push(rowData);
+        });
+
+        doc.autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 50,
+        });
+        
+        doc.save(`relatorio_culto_${cultInfo.date.replace(/\//g, '-')}.pdf`);
+    };
+    
+    return (
+        <>
+            <Modal {...modalState} onClose={hideModal} />
+            <div className="min-h-screen bg-gray-100 p-4 lg:p-8">
+                <div className="max-w-screen-2xl mx-auto">
+                    <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
+                        <h1 className="text-3xl lg:text-4xl font-bold text-gray-800">Gestor de Culto</h1>
+                        <div className="flex items-center gap-4">
+                            <Clock />
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => setShowTechnical(!showTechnical)} className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-md flex items-center gap-2 text-sm">
+                                    <icons.Monitor size={16} /> <span>Técnico</span>
+                                </button>
+                                <button onClick={() => setMode(mode === 'planning' ? 'presentation' : 'planning')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center gap-2">
+                                    {mode === 'planning' ? <icons.Play size={18}/> : <icons.Settings size={18}/>}
+                                    <span>{mode === 'planning' ? 'Modo Ao Vivo' : 'Planejamento'}</span>
+                                </button>
                             </div>
-                            {mode === 'planning' ? (
-                                <PlanningView {...state} onCultInfoChange={handleCultInfoChange} showTechnical={showTechnical} onAddItem={addItem} onUpdateItem={updateItem} onDeleteItem={deleteItem} onMoveItem={moveItem} onSavePreset={handleSavePreset} onLoadPreset={handleLoadPreset} onDeletePreset={handleDeletePreset} onDownloadTemplate={handleDownloadExcelTemplate} onImportClick={() => fileInputRef.current.click()} onExportPDF={handleExportPDF} presets={presets} selectedPresetId={selectedPresetId} setSelectedPresetId={setSelectedPresetId} />
-                            ) : (
-                                <PresentationView state={state} onStateUpdate={handleStateUpdate} isReadOnly={false} onSwitchToPlanning={() => setMode('planning')} onExportPDF={handleExportPDF} />
-                            )}
-                            <input type="file" accept=".xlsx, .xls" ref={fileInputRef} className="hidden-file-input" onChange={handleImportExcel} />
                         </div>
                     </div>
-                </>
-            );
-        };
+                    {mode === 'planning' ? (
+                        <PlanningView {...state} onCultInfoChange={handleCultInfoChange} showTechnical={showTechnical} onAddItem={addItem} onUpdateItem={updateItem} onDeleteItem={deleteItem} onMoveItem={moveItem} onSavePreset={handleSavePreset} onLoadPreset={handleLoadPreset} onDeletePreset={handleDeletePreset} onDownloadTemplate={handleDownloadExcelTemplate} onImportClick={() => fileInputRef.current.click()} onExportPDF={handleExportPDF} presets={presets} selectedPresetId={selectedPresetId} setSelectedPresetId={setSelectedPresetId} />
+                    ) : (
+                        <PresentationView state={state} onStateUpdate={handleStateUpdate} isReadOnly={false} onSwitchToPlanning={() => setMode('planning')} onExportPDF={handleExportPDF} />
+                    )}
+                    <input type="file" accept=".xlsx, .xls" ref={fileInputRef} className="hidden-file-input" onChange={handleImportExcel} />
+                </div>
+            </div>
+        </>
+    );
+};
 
         const TeamView = ({ state }) => {
             useEffect(() => {
