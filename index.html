@@ -63,7 +63,6 @@
         body { font-family: 'Inter', sans-serif; }
         .font-mono { font-family: 'Roboto Mono', monospace; }
         .hidden-file-input { display: none; }
-        /* UPDATED: Changed background to solid black for better projection */
         .presentation-mode {
             background-color: #000000;
         }
@@ -131,7 +130,7 @@
                 };
 
                 checkVisibility();
-                const interval = setInterval(checkVisibility, 1000); // Verifica a cada segundo
+                const interval = setInterval(checkVisibility, 1000); // Check every second
 
                 return () => clearInterval(interval);
             }, [announcement]);
@@ -640,9 +639,8 @@
             );
         };
         
-        // REFACTORED PresentationView
         const PresentationView = ({ state, onStateUpdate, isReadOnly, onSwitchToPlanning, onExportPDF }) => {
-            const [displayTime, setDisplayTime] = useState(0);
+            const [elapsedTime, setElapsedTime] = useState(0);
             const { items, cultInfo, liveState } = state;
             const { currentItemIndex, isRunning, itemStartTime, accumulatedTime, actualStartTime } = liveState;
             const currentItem = items && items[currentItemIndex];
@@ -650,17 +648,75 @@
             const [announcementText, setAnnouncementText] = useState("");
             const [announcementDuration, setAnnouncementDuration] = useState(10);
             const { modalState, showModal, hideModal } = useModal();
+            const [estimatedEndTime, setEstimatedEndTime] = useState('--:--');
 
             const techKeyTranslations = { projection: 'Projeção', sound: 'Som', microphone: 'Microfone', lighting: 'Iluminação', camera: 'Câmera', staff: 'Staff', transmission: 'Transmissão' };
 
-            useEffect(() => { let interval; if (isRunning) { interval = setInterval(() => { const elapsed = itemStartTime ? (Date.now() - itemStartTime) / 1000 : 0; setDisplayTime(accumulatedTime + elapsed); }, 250); } else { setDisplayTime(accumulatedTime); } return () => clearInterval(interval); }, [isRunning, itemStartTime, accumulatedTime, currentItemIndex]);
-            const formatTime = (seconds) => { if (!seconds || seconds < 0) seconds = 0; const mins = Math.floor(seconds / 60); const secs = Math.floor(seconds % 60); return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`; };
-            const plannedDurationInSeconds = (currentItem?.duration || 0) * 60;
-            const isOvertime = displayTime > plannedDurationInSeconds;
-            const progressPercentage = plannedDurationInSeconds > 0 ? Math.min((displayTime / plannedDurationInSeconds) * 100, 100) : 0;
+            const plannedDurationInSeconds = useMemo(() => (currentItem?.duration || 0) * 60, [currentItem]);
+
+            useEffect(() => {
+                let interval;
+                if (isRunning) {
+                    interval = setInterval(() => {
+                        const elapsed = itemStartTime ? (Date.now() - itemStartTime) / 1000 : 0;
+                        setElapsedTime(accumulatedTime + elapsed);
+                    }, 250);
+                } else {
+                    setElapsedTime(accumulatedTime);
+                }
+                return () => clearInterval(interval);
+            }, [isRunning, itemStartTime, accumulatedTime]);
+            
+            useEffect(() => {
+                const calculateEndTime = () => {
+                    if (!items || items.length === 0 || currentItemIndex >= items.length) return;
+                    
+                    const totalPlannedDurationFromNow = items
+                        .slice(currentItemIndex)
+                        .reduce((acc, item) => acc + (item.duration || 0) * 60, 0);
+
+                    const totalRemainingSeconds = totalPlannedDurationFromNow - elapsedTime;
+                    const estimatedEnd = new Date(Date.now() + totalRemainingSeconds * 1000);
+                    
+                    setEstimatedEndTime(estimatedEnd.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+                };
+
+                const interval = setInterval(calculateEndTime, 5000);
+                calculateEndTime();
+
+                return () => clearInterval(interval);
+            }, [items, currentItemIndex, elapsedTime, isRunning]);
+
+            const formatTime = (seconds) => {
+                if (typeof seconds !== 'number' || isNaN(seconds)) seconds = 0;
+                const absSeconds = Math.abs(seconds);
+                const mins = Math.floor(absSeconds / 60);
+                const secs = Math.floor(absSeconds % 60);
+                return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            };
+            
+            const remainingTime = plannedDurationInSeconds - elapsedTime;
             
             const balance = useMemo(() => { if (!items) return 0; let initialDelayInMinutes = 0; if (actualStartTime && cultInfo.startTime) { const plannedStart = new Date(`1970-01-01T${cultInfo.startTime}:00`); const actualStart = new Date(actualStartTime); const actualStartOnSameDay = new Date(`1970-01-01T${actualStart.toTimeString().slice(0,8)}`); if (!isNaN(plannedStart) && !isNaN(actualStartOnSameDay)) { initialDelayInMinutes = (actualStartOnSameDay - plannedStart) / (1000 * 60); } } const itemsBalance = items.slice(0, currentItemIndex).reduce((acc, item) => { if (!item.completed) return acc; const planned = item.duration || 0; const actual = item.actualDuration != null ? item.actualDuration / 60 : planned; return acc + (planned - actual); }, 0); return itemsBalance - initialDelayInMinutes; }, [items, currentItemIndex, actualStartTime, cultInfo.startTime]);
-            const estimatedEndTime = useMemo(() => { if (!items || !cultInfo.startTime) return '--:--'; const remainingItems = items.slice(currentItemIndex); const remainingDurationMinutes = remainingItems.reduce((acc, item) => acc + (item.duration || 0), 0); const now = new Date(); const estimatedEnd = new Date(now.getTime() + (remainingDurationMinutes * 60 * 1000) + (balance * 60 * 1000)); return estimatedEnd.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }, [items, currentItemIndex, balance, cultInfo.startTime]);
+            
+            const getTimerColor = () => {
+                if (plannedDurationInSeconds <= 0) return 'text-green-400';
+                if (remainingTime < 0) return 'text-red-400';
+                const percentageLeft = (remainingTime / plannedDurationInSeconds);
+                if (percentageLeft <= 0.15) return 'text-orange-400';
+                if (percentageLeft <= 0.25) return 'text-yellow-400';
+                return 'text-green-400';
+            };
+            
+            const getProgressBarColor = () => {
+                if (remainingTime < 0) return 'bg-red-500';
+                const percentageLeft = (remainingTime / plannedDurationInSeconds);
+                if (percentageLeft <= 0.15) return 'bg-orange-500';
+                if (percentageLeft <= 0.25) return 'bg-yellow-500';
+                return 'bg-green-500';
+            };
+            
+            const progressPercentage = plannedDurationInSeconds > 0 ? Math.min((elapsedTime / plannedDurationInSeconds) * 100, 100) : 0;
 
             const handleToggleTimer = () => { onStateUpdate(prevState => { const { liveState, items } = prevState; const now = Date.now(); if (liveState.isRunning) { const elapsed = liveState.itemStartTime ? (now - liveState.itemStartTime) / 1000 : 0; return { ...prevState, liveState: { ...liveState, isRunning: false, accumulatedTime: liveState.accumulatedTime + elapsed, itemStartTime: null } }; } else { const newItems = items.map((item, index) => index === liveState.currentItemIndex ? { ...item, actualStartTime: item.actualStartTime || new Date().toISOString() } : item); return { ...prevState, items: newItems, liveState: { ...liveState, isRunning: true, itemStartTime: now, actualStartTime: liveState.actualStartTime || new Date().toISOString() } }; } }); };
             const handleResetTimer = () => { onStateUpdate(prevState => ({ ...prevState, liveState: { ...prevState.liveState, isRunning: false, itemStartTime: null, accumulatedTime: 0 } })); };
@@ -734,10 +790,8 @@
                 <>
                     <Modal {...modalState} onClose={hideModal} />
                     <div className={`flex flex-col h-full space-y-4 ${mainBgColor}`}>
-                        {/* <!-- Main 3-column grid container --> */}
                         <div className="flex-grow grid grid-cols-1 md:grid-cols-3 gap-4">
                             
-                            {/* <!-- Column 1: Current Item (Left) --> */}
                             <div className={`${panelBgColor} ${panelTextColor} p-6 rounded-lg flex flex-col shadow-lg`}>
                                 <div className="flex justify-between items-start mb-2">
                                     <div>
@@ -747,11 +801,13 @@
                                     <LiveClock isTeamView={isReadOnly} />
                                 </div>
                                 <div className="text-center my-auto">
-                                    <div className={`text-7xl lg:text-8xl font-mono ${isOvertime ? 'text-red-400' : 'text-green-400'}`}>{formatTime(displayTime)}</div>
-                                    <div className="w-full bg-gray-700 rounded-full h-3 my-3">
-                                        <div className={`h-3 rounded-full transition-all duration-500 ${isOvertime ? 'bg-red-500' : 'bg-green-500'}`} style={{ width: `${progressPercentage}%` }} />
+                                    <div className={`text-7xl lg:text-8xl font-mono ${getTimerColor()}`}>
+                                        {remainingTime >= 0 ? formatTime(remainingTime) : `-${formatTime(remainingTime)}`}
                                     </div>
-                                    <div className="text-gray-400 lg:text-lg">Tempo Planejado: {formatTime(plannedDurationInSeconds)}</div>
+                                    <div className="w-full bg-gray-700 rounded-full h-3 my-3">
+                                        <div className={`h-3 rounded-full transition-colors duration-500 ${getProgressBarColor()}`} style={{ width: `${progressPercentage}%` }} />
+                                    </div>
+                                    <div className="text-gray-400 lg:text-lg">Duração Planejada: {formatTime(plannedDurationInSeconds)}</div>
                                 </div>
                                 {currentItem.description && (
                                     <div className="mt-4">
@@ -761,7 +817,6 @@
                                 )}
                             </div>
 
-                            {/* <!-- Column 2: Technical Details (Center) --> */}
                             <div className={`${panelBgColor} ${panelTextColor} p-6 rounded-lg shadow-lg`}>
                                  <div className="text-xs uppercase text-gray-400">Detalhes Técnicos</div>
                                  <h3 className={`text-2xl font-bold mb-4 ${isReadOnly ? 'text-white' : 'text-black'}`}>Instruções da Equipe</h3>
@@ -775,7 +830,6 @@
                                  </ul>
                             </div>
 
-                            {/* <!-- Column 3: Up Next (Right) --> */}
                             <div className={`${panelBgColor} ${panelTextColor} p-6 rounded-lg shadow-lg`}>
                                 <div className="text-xs uppercase text-yellow-400 font-bold">A SEGUIR</div>
                                 {nextItem ? (
@@ -808,7 +862,6 @@
                             </div>
                         </div>
 
-                        {/* <!-- Controls and Timeline --> */}
                         <div className="mt-auto">
                            {!isReadOnly && ( 
                                 <div className="bg-white p-4 rounded-lg mb-4 shadow-md">
@@ -841,7 +894,7 @@
                                     <h3 className="font-semibold text-xl">Linha do Tempo</h3>
                                     <div className="flex gap-4 items-center">
                                         <div className={`text-sm font-semibold px-3 py-1 rounded-full ${balance >= 0 ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}> Balanço: {balance >= 0 ? '+' : ''}{Math.round(balance)} min </div>
-                                        <div className={`text-sm font-semibold ${isReadOnly ? 'text-white' : 'text-black'}`}>Término: <span className={`font-mono px-2 py-1 rounded ${isReadOnly ? 'bg-gray-700' : 'bg-gray-300'}`}>{estimatedEndTime}</span></div>
+                                        <div className={`text-sm font-semibold ${isReadOnly ? 'text-white' : 'text-black'}`}>Término Previsto: <span className={`font-mono px-2 py-1 rounded ${isReadOnly ? 'bg-gray-700' : 'bg-gray-300'}`}>{estimatedEndTime}</span></div>
                                     </div>
                                 </div>
                                 <div className="flex overflow-x-auto gap-3 pb-2"> {items && items.map((item, index) => { const isCurrent = index === currentItemIndex; const isNext = index === currentItemIndex + 1; const borderColor = isCurrent ? 'border-blue-500' : isNext ? 'border-yellow-400' : 'border-gray-600'; const bgColor = isCurrent ? 'bg-blue-900/50' : 'bg-gray-700/50'; return ( <div key={item.id} className={`flex-shrink-0 w-48 p-3 rounded-lg border-2 transition-all ${borderColor} ${bgColor}`}> <div className="flex justify-between items-start"> <span className="text-xs font-mono text-gray-300">{item.startTime}</span> {item.completed && <icons.CheckCircle size={16} className="text-green-400"/>} </div> <h4 className={`font-semibold text-sm mb-1 ${item.completed ? 'text-gray-400 line-through' : 'text-white'}`}>{item.title}</h4> <div className="text-xs text-gray-400 flex items-center gap-1"><icons.Clock size={12} /> {item.duration} min</div> </div> ); })} </div>
