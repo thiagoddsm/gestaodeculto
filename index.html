@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="google-adsense-account" content="ca-pub-4895923678765380">
     <title>Gestor de Culto Ao Vivo</title>
     
     <!-- Tailwind CSS -->
@@ -59,10 +58,7 @@
             alert("Não foi possível conectar ao Firebase.");
         }
     </script>
-    
- <script> async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4895923678765380"
-     crossorigin="anonymous"> </script>
-    
+
     <style>
         body { font-family: 'Inter', sans-serif; }
         .font-mono { font-family: 'Roboto Mono', monospace; }
@@ -134,7 +130,7 @@
                 };
 
                 checkVisibility();
-                const interval = setInterval(checkVisibility, 1000); // Check every second
+                const interval = setInterval(checkVisibility, 1000);
 
                 return () => clearInterval(interval);
             }, [announcement]);
@@ -148,18 +144,14 @@
             );
         };
 
-        const LiveClock = ({ isTeamView }) => {
+        const Clock = () => {
             const [time, setTime] = useState(new Date());
             useEffect(() => {
                 const timerId = setInterval(() => setTime(new Date()), 1000);
                 return () => clearInterval(timerId);
             }, []);
-            
-            const textColor = isTeamView ? 'text-white' : 'text-gray-700';
-            const bgColor = isTeamView ? 'bg-white/10' : 'bg-gray-200';
-
             return (
-                <div className={`font-mono text-xl ${textColor} ${bgColor} px-3 py-1 rounded-md`}>
+                <div className="font-mono text-xl text-gray-700 bg-gray-200 px-3 py-1 rounded-md">
                     {time.toLocaleTimeString('pt-BR')}
                 </div>
             );
@@ -280,6 +272,10 @@
             if (viewMode === 'team') {
                 return <TeamView state={state} />;
             }
+            
+            if (viewMode === 'timer') {
+                return <TimerView state={state} />;
+            }
 
             return (
                 <CoordinatorController 
@@ -329,7 +325,7 @@
 
             const addItem = () => {
                 handleStateUpdate(prevState => {
-                    const newItem = { id: crypto.randomUUID(), title: 'Novo Momento', duration: 5, type: 'palavra', responsible: 'A definir', description: '', technical: { projection: '-', sound: '-', microphone: '-', lighting: '-', camera: '-', staff: '-', transmission: '-' }, completed: false, actualDuration: null, actualStartTime: null, actualEndTime: null };
+                    const newItem = { id: crypto.randomUUID(), title: 'Novo Momento', duration: 5, type: 'palavra', responsible: 'A definir', description: '', technical: { projection: {text: '-', color: '#ffffff'}, sound: {text: '-'}, microphone: {text: '-'}, lighting: {text: '-', color: '#ffffff'}, camera: {text: '-'} }, completed: false, actualDuration: null, actualStartTime: null, actualEndTime: null };
                     const newItems = calculateStartTimes([...prevState.items, newItem], prevState.cultInfo.startTime);
                     return { ...prevState, items: newItems };
                 });
@@ -394,7 +390,7 @@
                 };
 
                 showModal({
-                    title: "Salvar Preset",
+                    title: "Salvar Novo Preset",
                     children: <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Preset</label>
                         <input 
@@ -411,23 +407,40 @@
                     </>
                 });
             };
+
+            const handleUpdatePreset = () => {
+                if (!selectedPresetId) return;
+                const presetToUpdate = presets.find(p => p.id === selectedPresetId);
+                if (!presetToUpdate) return;
+
+                showModal({
+                    title: "Atualizar Preset",
+                    children: <p>Tem certeza que deseja salvar as alterações no preset "{presetToUpdate.name}"?</p>,
+                    footer: <>
+                        <button onClick={hideModal} className="px-4 py-2 bg-gray-200 rounded-md">Cancelar</button>
+                        <button onClick={async () => {
+                            const worshipDataBaseRef = firestore.doc(db, "artifacts", appId, "public", "data", "worship-order", "singleton");
+                            const presetDocRef = firestore.doc(worshipDataBaseRef, "presets", selectedPresetId);
+                            const presetData = { name: presetToUpdate.name, savedAt: new Date().toISOString(), items: state.items, cultInfo: state.cultInfo };
+                            await firestore.setDoc(presetDocRef, presetData);
+                            fetchPresets();
+                            hideModal();
+                        }} className="px-4 py-2 bg-blue-600 text-white rounded-md">Atualizar</button>
+                    </>
+                });
+            };
             
             const handleLoadPreset = (presetId) => {
-                if (!presetId) return;
+                if (!presetId) {
+                    handleStateUpdate(prevState => ({...prevState, items: [], cultInfo: { date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric'}), coordenadorTecnico: 'A definir', staff: 'A definir', lead: 'A definir', som: 'A definir', projecao: 'A definir', iluminacao: 'A definir', transmissao: 'A definir', pregador: 'A definir', startTime: '19:00' }}));
+                    setSelectedPresetId('');
+                    return;
+                }
                 const preset = presets.find(p => p.id === presetId);
                 if (preset) {
-                    showModal({
-                        title: "Carregar Preset",
-                        children: <p>Isso substituirá a ordem de culto atual. Deseja continuar?</p>,
-                        footer: <>
-                            <button onClick={hideModal} className="px-4 py-2 bg-gray-200 rounded-md">Cancelar</button>
-                            <button onClick={() => {
-                                const newItems = calculateStartTimes(preset.items, preset.cultInfo.startTime);
-                                handleStateUpdate({ ...state, items: newItems, cultInfo: preset.cultInfo });
-                                hideModal();
-                            }} className="px-4 py-2 bg-yellow-500 text-white rounded-md">Carregar</button>
-                        </>
-                    });
+                    const newItems = calculateStartTimes(preset.items, preset.cultInfo.startTime);
+                    handleStateUpdate({ ...state, items: newItems, cultInfo: preset.cultInfo });
+                    setSelectedPresetId(presetId);
                 }
             };
             
@@ -479,7 +492,7 @@
                                         const sheetName = workbook.SheetNames[0];
                                         const worksheet = workbook.Sheets[sheetName];
                                         const json = XLSX.utils.sheet_to_json(worksheet);
-                                        const newItemsFromExcel = json.map(row => ({ id: crypto.randomUUID(), title: row.title || 'Sem Título', duration: parseInt(row.duration, 10) || 5, type: row.type || 'palavra', responsible: row.responsible || 'A definir', description: row.description || '', technical: { projection: '-', sound: '-', microphone: '-', lighting: '-', camera: '-', staff: '-', transmission: '-' }, completed: false, actualDuration: null, actualStartTime: null, actualEndTime: null }));
+                                        const newItemsFromExcel = json.map(row => ({ id: crypto.randomUUID(), title: row.title || 'Sem Título', duration: parseInt(row.duration, 10) || 5, type: row.type || 'palavra', responsible: row.responsible || 'A definir', description: row.description || '', technical: { projection: {text: '-', color: '#ffffff'}, sound: {text: '-'}, microphone: {text: '-'}, lighting: {text: '-', color: '#ffffff'}, camera: {text: '-'} }, completed: false, actualDuration: null, actualStartTime: null, actualEndTime: null }));
                                         handleStateUpdate(prevState => ({ ...prevState, items: calculateStartTimes(newItemsFromExcel, prevState.cultInfo.startTime) }));
                                     } catch(error) { alert("Ocorreu um erro ao ler o arquivo Excel."); console.error("Erro no SheetJS:", error); }
                                 };
@@ -541,7 +554,7 @@
                             <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
                                 <h1 className="text-3xl lg:text-4xl font-bold text-gray-800">Gestor de Culto</h1>
                                 <div className="flex items-center gap-4">
-                                    <LiveClock isTeamView={false} />
+                                    <Clock />
                                     <div className="flex items-center gap-2">
                                         <button onClick={() => setShowTechnical(!showTechnical)} className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-md flex items-center gap-2 text-sm">
                                             <icons.Monitor size={16} /> <span>Técnico</span>
@@ -554,7 +567,7 @@
                                 </div>
                             </div>
                             {mode === 'planning' ? (
-                                <PlanningView {...state} onCultInfoChange={handleCultInfoChange} showTechnical={showTechnical} onAddItem={addItem} onUpdateItem={updateItem} onDeleteItem={deleteItem} onMoveItem={moveItem} onSavePreset={handleSavePreset} onLoadPreset={handleLoadPreset} onDeletePreset={handleDeletePreset} onDownloadTemplate={handleDownloadExcelTemplate} onImportClick={() => fileInputRef.current.click()} onExportPDF={handleExportPDF} presets={presets} selectedPresetId={selectedPresetId} setSelectedPresetId={setSelectedPresetId} />
+                                <PlanningView {...state} onCultInfoChange={handleCultInfoChange} showTechnical={showTechnical} onAddItem={addItem} onUpdateItem={updateItem} onDeleteItem={deleteItem} onMoveItem={moveItem} onSavePreset={handleSavePreset} onUpdatePreset={handleUpdatePreset} onLoadPreset={handleLoadPreset} onDeletePreset={handleDeletePreset} onDownloadTemplate={handleDownloadExcelTemplate} onImportClick={() => fileInputRef.current.click()} onExportPDF={handleExportPDF} presets={presets} selectedPresetId={selectedPresetId} setSelectedPresetId={setSelectedPresetId} />
                             ) : (
                                 <PresentationView state={state} onStateUpdate={handleStateUpdate} isReadOnly={false} onSwitchToPlanning={() => setMode('planning')} onExportPDF={handleExportPDF} />
                             )}
@@ -572,9 +585,13 @@
             }, []);
 
             return (
-               <div className="min-h-screen p-4 lg:p-8 text-white">
-                 <AnnouncementBanner announcement={state.liveState.announcement} />
-                   <div className="max-w-screen-2xl mx-auto h-screen flex flex-col">
+               <div className="min-h-screen p-4 lg:p-8">
+                  <AnnouncementBanner announcement={state.liveState.announcement} />
+                   <div className="max-w-screen-2xl mx-auto">
+                       <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
+                           <h1 className="text-3xl lg:text-4xl font-bold text-white">Gestor de Culto - Equipe</h1>
+                           <Clock />
+                       </div>
                        <PresentationView state={state} isReadOnly={true} />
                    </div>
                </div>
@@ -583,15 +600,25 @@
         
         const InfoInput = ({ label, ...props }) => ( <div> <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label> <input {...props} className="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" /> </div> );
 
-        const PlanningView = ({ items, cultInfo, onCultInfoChange, showTechnical, onAddItem, onUpdateItem, onDeleteItem, onMoveItem, onSavePreset, onLoadPreset, onDeletePreset, onDownloadTemplate, onImportClick, onExportPDF, presets, selectedPresetId, setSelectedPresetId }) => {
-            const techFields = [ { key: 'projection', label: 'Projeção' }, { key: 'sound', label: 'Som' }, { key: 'microphone', label: 'Microfone' }, { key: 'lighting', label: 'Iluminação' }, { key: 'camera', label: 'Câmera' }, { key: 'staff', label: 'Staff' }, { key: 'transmission', label: 'Transmissão' } ];
-            return ( <> <div className="bg-white rounded-lg p-6 mb-6 shadow-sm"> <h2 className="text-xl font-semibold mb-4">Informações do Culto</h2> <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"> <InfoInput label="Data" type="text" value={cultInfo.date} onChange={e => onCultInfoChange('date', e.target.value)} /> <InfoInput label="Coordenador Técnico" value={cultInfo.coordenadorTecnico} onChange={e => onCultInfoChange('coordenadorTecnico', e.target.value)} /> <InfoInput label="Staff" value={cultInfo.staff} onChange={e => onCultInfoChange('staff', e.target.value)} /> <InfoInput label="Lead" value={cultInfo.lead} onChange={e => onCultInfoChange('lead', e.target.value)} /> <InfoInput label="Som" value={cultInfo.som} onChange={e => onCultInfoChange('som', e.target.value)} /> <InfoInput label="Projeção" value={cultInfo.projecao} onChange={e => onCultInfoChange('projecao', e.target.value)} /> <InfoInput label="Iluminação" value={cultInfo.iluminacao} onChange={e => onCultInfoChange('iluminacao', e.target.value)} /> <InfoInput label="Transmissão" value={cultInfo.transmissao} onChange={e => onCultInfoChange('transmissao', e.target.value)} /> <InfoInput label="Pregador" value={cultInfo.pregador} onChange={e => onCultInfoChange('pregador', e.target.value)} /> <InfoInput label="Início do Culto" type="time" value={cultInfo.startTime} onChange={e => onCultInfoChange('startTime', e.target.value)} /> </div> </div> <div className="bg-white rounded-lg shadow-sm"> <div className="p-4 border-b flex flex-wrap justify-between items-center gap-3"> <h2 className="text-xl font-semibold">Ordem de Culto</h2> <div className="flex flex-wrap items-center gap-2"> <button onClick={onImportClick} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.UploadCloud size={16}/> Importar</button> <button onClick={onDownloadTemplate} className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.DownloadCloud size={16}/> Modelo</button> <button onClick={onExportPDF} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.FileText size={16}/> Exportar Relatório</button> <button onClick={onSavePreset} className="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.Save size={16}/> Salvar Preset</button> <div className="flex items-center border border-gray-300 rounded-md"> <select onChange={(e) => setSelectedPresetId(e.target.value)} value={selectedPresetId} className="border-0 rounded-l-md bg-gray-50 text-sm focus:ring-0"> <option value="">Selecione um Preset</option> {presets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)} </select> <button onClick={() => onLoadPreset(selectedPresetId)} disabled={!selectedPresetId} className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed">Carregar</button> <button onClick={onDeletePreset} disabled={!selectedPresetId} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-r-md flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"><icons.Trash2 size={16}/></button> </div> <button onClick={onAddItem} className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.Plus size={16}/> Adicionar Item</button> </div> </div> <div className="divide-y divide-gray-200"> {items && items.map((item, index) => ( <PlanningItem key={item.id} item={item} index={index} isFirst={index === 0} isLast={index === items.length - 1} showTechnical={showTechnical} onUpdate={onUpdateItem} onDelete={onDeleteItem} onMove={onMoveItem} techFields={techFields} /> ))} {(!items || items.length === 0) && <p className="p-4 text-gray-500">Nenhum item na ordem de culto. Adicione um para começar ou importe um arquivo.</p>} </div> </div> </> );
+        const PlanningView = ({ items, cultInfo, onCultInfoChange, showTechnical, onAddItem, onUpdateItem, onDeleteItem, onMoveItem, onSavePreset, onUpdatePreset, onLoadPreset, onDeletePreset, onDownloadTemplate, onImportClick, onExportPDF, presets, selectedPresetId, setSelectedPresetId }) => {
+            return ( <> <div className="bg-white rounded-lg p-6 mb-6 shadow-sm"> <h2 className="text-xl font-semibold mb-4">Informações do Culto</h2> <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"> <InfoInput label="Data" type="text" value={cultInfo.date} onChange={e => onCultInfoChange('date', e.target.value)} /> <InfoInput label="Coordenador Técnico" value={cultInfo.coordenadorTecnico} onChange={e => onCultInfoChange('coordenadorTecnico', e.target.value)} /> <InfoInput label="Staff" value={cultInfo.staff} onChange={e => onCultInfoChange('staff', e.target.value)} /> <InfoInput label="Lead" value={cultInfo.lead} onChange={e => onCultInfoChange('lead', e.target.value)} /> <InfoInput label="Som" value={cultInfo.som} onChange={e => onCultInfoChange('som', e.target.value)} /> <InfoInput label="Projeção" value={cultInfo.projecao} onChange={e => onCultInfoChange('projecao', e.target.value)} /> <InfoInput label="Iluminação" value={cultInfo.iluminacao} onChange={e => onCultInfoChange('iluminacao', e.target.value)} /> <InfoInput label="Transmissão" value={cultInfo.transmissao} onChange={e => onCultInfoChange('transmissao', e.target.value)} /> <InfoInput label="Pregador" value={cultInfo.pregador} onChange={e => onCultInfoChange('pregador', e.target.value)} /> <InfoInput label="Início do Culto" type="time" value={cultInfo.startTime} onChange={e => onCultInfoChange('startTime', e.target.value)} /> </div> </div> <div className="bg-white rounded-lg shadow-sm"> <div className="p-4 border-b flex flex-wrap justify-between items-center gap-3"> <h2 className="text-xl font-semibold">Ordem de Culto</h2> <div className="flex flex-wrap items-center gap-2"> <button onClick={onImportClick} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.UploadCloud size={16}/> Importar</button> <button onClick={onDownloadTemplate} className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.DownloadCloud size={16}/> Modelo</button> <button onClick={onExportPDF} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.FileText size={16}/> Exportar Relatório</button> <button onClick={selectedPresetId ? onUpdatePreset : onSavePreset} className="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.Save size={16}/> {selectedPresetId ? 'Atualizar Preset' : 'Salvar Preset'}</button> <div className="flex items-center border border-gray-300 rounded-md"> <select onChange={(e) => onLoadPreset(e.target.value)} value={selectedPresetId} className="border-0 rounded-l-md bg-gray-50 text-sm focus:ring-0"> <option value="">Carregar um Preset...</option> {presets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)} </select> <button onClick={onDeletePreset} disabled={!selectedPresetId} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-r-md flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"><icons.Trash2 size={16}/></button> </div> <button onClick={onAddItem} className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.Plus size={16}/> Adicionar Item</button> </div> </div> <div className="divide-y divide-gray-200"> {items && items.map((item, index) => ( <PlanningItem key={item.id} item={item} index={index} isFirst={index === 0} isLast={index === items.length - 1} showTechnical={showTechnical} onUpdate={onUpdateItem} onDelete={onDeleteItem} onMove={onMoveItem} /> ))} {(!items || items.length === 0) && <p className="p-4 text-gray-500">Nenhum item na ordem de culto. Adicione um para começar ou importe um arquivo.</p>} </div> </div> </> );
         };
 
-        const PlanningItem = ({ item, index, isFirst, isLast, showTechnical, onUpdate, onDelete, onMove, techFields }) => {
+        const PlanningItem = ({ item, index, isFirst, isLast, showTechnical, onUpdate, onDelete, onMove }) => {
             const handleFieldChange = (field, value) => onUpdate(item.id, { [field]: value });
-            const handleTechFieldChange = (field, value) => onUpdate(item.id, { technical: { ...item.technical, [field]: value } });
+            const handleTechFieldChange = (field, subField, value) => {
+                onUpdate(item.id, { 
+                    technical: { 
+                        ...item.technical, 
+                        [field]: {
+                            ...item.technical[field],
+                            [subField]: value
+                        }
+                    } 
+                });
+            };
             const getTypeColor = type => ({'música': 'bg-blue-100 text-blue-800', 'oração': 'bg-purple-100 text-purple-800', 'palavra': 'bg-green-100 text-green-800', 'técnico': 'bg-orange-100 text-orange-800'})[type] || 'bg-gray-100 text-gray-800';
+            const techFields = [ { key: 'projection', label: 'Projeção' }, { key: 'sound', label: 'Som' }, { key: 'microphone', label: 'Microfone' }, { key: 'lighting', label: 'Iluminação' }, { key: 'camera', label: 'Câmera' }, ];
             
             return (
                 <div className="p-4 hover:bg-gray-50">
@@ -622,13 +649,23 @@
                                         {techFields.map(field => (
                                             <div key={field.key} className="grid grid-cols-[100px_1fr] items-center gap-2">
                                                 <label className="text-sm font-medium text-gray-500 text-right">{field.label}:</label>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Instruções..."
-                                                    value={item.technical[field.key]}
-                                                    onChange={e => handleTechFieldChange(field.key, e.target.value)}
-                                                    className="w-full border-gray-300 rounded-md shadow-sm sm:text-sm"
-                                                />
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Instruções..."
+                                                        value={item.technical[field.key]?.text || ''}
+                                                        onChange={e => handleTechFieldChange(field.key, 'text', e.target.value)}
+                                                        className="w-full border-gray-300 rounded-md shadow-sm sm:text-sm"
+                                                    />
+                                                    {(field.key === 'lighting' || field.key === 'projection') && (
+                                                        <input 
+                                                          type="color" 
+                                                          value={item.technical[field.key]?.color || '#ffffff'}
+                                                          onChange={e => handleTechFieldChange(field.key, 'color', e.target.value)}
+                                                          className="w-8 h-8 p-0 border-none rounded-md cursor-pointer"
+                                                        />
+                                                    )}
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -642,9 +679,11 @@
                 </div>
             );
         };
-        
+
+        const TechDetailsDisplay = ({ technical, colorClass = "text-blue-300" }) => { const techKeyTranslations = { projection: 'Projeção', sound: 'Som', microphone: 'Microfone', lighting: 'Iluminação', camera: 'Câmera' }; const techDetails = technical ? Object.entries(technical).filter(([key, value]) => (value?.text && value.text.trim() !== '-')) : []; if (techDetails.length === 0) return null; return ( <div> <h4 className={`font-semibold ${colorClass} mb-1 flex items-center gap-2`}><icons.Settings size={16} /> Detalhes Técnicos</h4> <div className="flex flex-col space-y-1 text-sm text-gray-300"> {techDetails.map(([key, value]) => ( <div key={key} className="flex items-center gap-2"> {key === 'projection' && <icons.Monitor size={14} />} {key === 'sound' && <icons.Volume2 size={14} />} {key === 'microphone' && <icons.Mic size={14} />} {key === 'lighting' && <icons.Lightbulb size={14} />} {key === 'camera' && <icons.Camera size={14} />} <span>{techKeyTranslations[key] || key}:</span> <span className="font-semibold text-white">{value.text}</span> {(value.color && (key === 'lighting' || key === 'projection')) && <div className="w-4 h-4 rounded border border-gray-400" style={{backgroundColor: value.color}}></div>} </div> ))} </div> </div> ); };
+
         const PresentationView = ({ state, onStateUpdate, isReadOnly, onSwitchToPlanning, onExportPDF }) => {
-            const [elapsedTime, setElapsedTime] = useState(0);
+            const [displayTime, setDisplayTime] = useState(0);
             const { items, cultInfo, liveState } = state;
             const { currentItemIndex, isRunning, itemStartTime, accumulatedTime, actualStartTime } = liveState;
             const currentItem = items && items[currentItemIndex];
@@ -652,75 +691,14 @@
             const [announcementText, setAnnouncementText] = useState("");
             const [announcementDuration, setAnnouncementDuration] = useState(10);
             const { modalState, showModal, hideModal } = useModal();
-            const [estimatedEndTime, setEstimatedEndTime] = useState('--:--');
 
-            const techKeyTranslations = { projection: 'Projeção', sound: 'Som', microphone: 'Microfone', lighting: 'Iluminação', camera: 'Câmera', staff: 'Staff', transmission: 'Transmissão' };
-
-            const plannedDurationInSeconds = useMemo(() => (currentItem?.duration || 0) * 60, [currentItem]);
-
-            useEffect(() => {
-                let interval;
-                if (isRunning) {
-                    interval = setInterval(() => {
-                        const elapsed = itemStartTime ? (Date.now() - itemStartTime) / 1000 : 0;
-                        setElapsedTime(accumulatedTime + elapsed);
-                    }, 250);
-                } else {
-                    setElapsedTime(accumulatedTime);
-                }
-                return () => clearInterval(interval);
-            }, [isRunning, itemStartTime, accumulatedTime]);
-            
-            useEffect(() => {
-                const calculateEndTime = () => {
-                    if (!items || items.length === 0 || currentItemIndex >= items.length) return;
-                    
-                    const totalPlannedDurationFromNow = items
-                        .slice(currentItemIndex)
-                        .reduce((acc, item) => acc + (item.duration || 0) * 60, 0);
-
-                    const totalRemainingSeconds = totalPlannedDurationFromNow - elapsedTime;
-                    const estimatedEnd = new Date(Date.now() + totalRemainingSeconds * 1000);
-                    
-                    setEstimatedEndTime(estimatedEnd.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
-                };
-
-                const interval = setInterval(calculateEndTime, 5000);
-                calculateEndTime();
-
-                return () => clearInterval(interval);
-            }, [items, currentItemIndex, elapsedTime, isRunning]);
-
-            const formatTime = (seconds) => {
-                if (typeof seconds !== 'number' || isNaN(seconds)) seconds = 0;
-                const absSeconds = Math.abs(seconds);
-                const mins = Math.floor(absSeconds / 60);
-                const secs = Math.floor(absSeconds % 60);
-                return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-            };
-            
-            const remainingTime = plannedDurationInSeconds - elapsedTime;
-            
+            useEffect(() => { let interval; if (isRunning) { interval = setInterval(() => { const elapsed = itemStartTime ? (Date.now() - itemStartTime) / 1000 : 0; setDisplayTime(accumulatedTime + elapsed); }, 250); } else { setDisplayTime(accumulatedTime); } return () => clearInterval(interval); }, [isRunning, itemStartTime, accumulatedTime, currentItemIndex]);
+            const formatTime = (seconds) => { if (!seconds || seconds < 0) seconds = 0; const mins = Math.floor(seconds / 60); const secs = Math.floor(seconds % 60); return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`; };
+            const plannedDurationInSeconds = (currentItem?.duration || 0) * 60;
+            const isOvertime = displayTime > plannedDurationInSeconds;
+            const progressPercentage = plannedDurationInSeconds > 0 ? Math.min((displayTime / plannedDurationInSeconds) * 100, 100) : 0;
             const balance = useMemo(() => { if (!items) return 0; let initialDelayInMinutes = 0; if (actualStartTime && cultInfo.startTime) { const plannedStart = new Date(`1970-01-01T${cultInfo.startTime}:00`); const actualStart = new Date(actualStartTime); const actualStartOnSameDay = new Date(`1970-01-01T${actualStart.toTimeString().slice(0,8)}`); if (!isNaN(plannedStart) && !isNaN(actualStartOnSameDay)) { initialDelayInMinutes = (actualStartOnSameDay - plannedStart) / (1000 * 60); } } const itemsBalance = items.slice(0, currentItemIndex).reduce((acc, item) => { if (!item.completed) return acc; const planned = item.duration || 0; const actual = item.actualDuration != null ? item.actualDuration / 60 : planned; return acc + (planned - actual); }, 0); return itemsBalance - initialDelayInMinutes; }, [items, currentItemIndex, actualStartTime, cultInfo.startTime]);
-            
-            const getTimerColor = () => {
-                if (plannedDurationInSeconds <= 0) return 'text-green-400';
-                if (remainingTime < 0) return 'text-red-400';
-                const percentageLeft = (remainingTime / plannedDurationInSeconds);
-                if (percentageLeft <= 0.15) return 'text-orange-400';
-                if (percentageLeft <= 0.25) return 'text-yellow-400';
-                return 'text-green-400';
-            };
-            
-            const getProgressBarColor = () => {
-                if (remainingTime < 0) return 'bg-red-500';
-                const percentageLeft = (remainingTime / plannedDurationInSeconds);
-                if (percentageLeft <= 0.15) return 'bg-orange-500';
-                if (percentageLeft <= 0.25) return 'bg-yellow-500';
-                return 'bg-green-500';
-            };
-            
-            const progressPercentage = plannedDurationInSeconds > 0 ? Math.min((elapsedTime / plannedDurationInSeconds) * 100, 100) : 0;
+            const estimatedEndTime = useMemo(() => { if (!items || !cultInfo.startTime) return '--:--'; const remainingItems = items.slice(currentItemIndex); const remainingDurationMinutes = remainingItems.reduce((acc, item) => acc + (item.duration || 0), 0); const now = new Date(); const estimatedEnd = new Date(now.getTime() + (remainingDurationMinutes * 60 * 1000) + (balance * 60 * 1000)); return estimatedEnd.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }, [items, currentItemIndex, balance, cultInfo.startTime]);
 
             const handleToggleTimer = () => { onStateUpdate(prevState => { const { liveState, items } = prevState; const now = Date.now(); if (liveState.isRunning) { const elapsed = liveState.itemStartTime ? (now - liveState.itemStartTime) / 1000 : 0; return { ...prevState, liveState: { ...liveState, isRunning: false, accumulatedTime: liveState.accumulatedTime + elapsed, itemStartTime: null } }; } else { const newItems = items.map((item, index) => index === liveState.currentItemIndex ? { ...item, actualStartTime: item.actualStartTime || new Date().toISOString() } : item); return { ...prevState, items: newItems, liveState: { ...liveState, isRunning: true, itemStartTime: now, actualStartTime: liveState.actualStartTime || new Date().toISOString() } }; } }); };
             const handleResetTimer = () => { onStateUpdate(prevState => ({ ...prevState, liveState: { ...prevState.liveState, isRunning: false, itemStartTime: null, accumulatedTime: 0 } })); };
@@ -766,18 +744,34 @@
             };
 
             if (!currentItem) { 
-                const bgColor = isReadOnly ? 'bg-black' : 'bg-white';
-                const textColor = isReadOnly ? 'text-white' : 'text-gray-800';
                 return (
                     <>
                         <Modal {...modalState} onClose={hideModal} />
-                        <div className={`text-center p-10 ${bgColor} ${textColor} rounded-lg shadow-md`}>
+                        <div className="text-center p-10 bg-white rounded-lg shadow-md">
                             <h2 className="text-2xl font-bold mb-6">Culto Finalizado.</h2>
                             {!isReadOnly && (
                                 <div className="flex justify-center items-center gap-4">
-                                    <button onClick={onExportPDF} className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700"> <icons.FileText size={18}/> Exportar Relatório </button>
-                                    <button onClick={handleResetWorship} className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"> <icons.RotateCcw size={18}/> Reiniciar Culto </button>
-                                    <button onClick={onSwitchToPlanning} className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700"> <icons.Settings size={18}/> Voltar ao Planejamento </button>
+                                    <button
+                                        onClick={onExportPDF}
+                                        className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                    >
+                                        <icons.FileText size={18}/>
+                                        Exportar Relatório
+                                    </button>
+                                    <button
+                                        onClick={handleResetWorship}
+                                        className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                    >
+                                        <icons.RotateCcw size={18}/>
+                                        Reiniciar Culto
+                                    </button>
+                                    <button
+                                        onClick={onSwitchToPlanning}
+                                        className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                                    >
+                                        <icons.Settings size={18}/>
+                                        Voltar ao Planejamento
+                                    </button>
                                 </div>
                             )}
                         </div>
@@ -785,126 +779,71 @@
                 )
             }
             
-            const mainBgColor = isReadOnly ? 'bg-black' : 'bg-gray-100';
-            const panelBgColor = isReadOnly ? 'bg-gray-900' : 'bg-white';
-            const panelTextColor = isReadOnly ? 'text-white' : 'text-gray-800';
-            const timelineBgColor = isReadOnly ? 'bg-gray-900' : 'bg-gray-200';
+            const mainContentColor = isReadOnly ? 'text-white' : 'text-gray-800';
+            const mainBgColor = isReadOnly ? 'bg-gray-900' : 'bg-gray-800';
+            const timelineBgColor = isReadOnly ? 'bg-gray-800/50' : 'bg-gray-800';
             
             return (
                 <>
-                    <Modal {...modalState} onClose={hideModal} />
-                    <div className={`flex flex-col h-full space-y-4 ${mainBgColor}`}>
-                        <div className="flex-grow grid grid-cols-1 md:grid-cols-3 gap-4">
-                            
-                            <div className={`${panelBgColor} ${panelTextColor} p-6 rounded-lg flex flex-col shadow-lg`}>
-                                <div className="flex justify-between items-start mb-2">
-                                    <div>
-                                        <div className="text-xs uppercase text-gray-400">AGORA</div>
-                                        <h2 className={`text-3xl lg:text-4xl font-bold ${isReadOnly ? 'text-white' : 'text-black'}`}>{currentItem.title}</h2>
-                                    </div>
-                                    <LiveClock isTeamView={isReadOnly} />
-                                </div>
-                                <div className="text-center my-auto">
-                                    <div className={`text-7xl lg:text-8xl font-mono ${getTimerColor()}`}>
-                                        {remainingTime >= 0 ? formatTime(remainingTime) : `-${formatTime(remainingTime)}`}
-                                    </div>
-                                    <div className="w-full bg-gray-700 rounded-full h-3 my-3">
-                                        <div className={`h-3 rounded-full transition-colors duration-500 ${getProgressBarColor()}`} style={{ width: `${progressPercentage}%` }} />
-                                    </div>
-                                    <div className="text-gray-400 lg:text-lg">Duração Planejada: {formatTime(plannedDurationInSeconds)}</div>
-                                </div>
-                                {currentItem.description && (
-                                    <div className="mt-4">
-                                        <h4 className="font-semibold text-blue-400 mb-1">Descrição</h4>
-                                        <p className="text-sm text-gray-300 whitespace-pre-wrap">{currentItem.description}</p>
-                                    </div>
-                                )}
+                <Modal {...modalState} onClose={hideModal} />
+                <div className="space-y-4">
+                    <div className={`${mainBgColor} ${mainContentColor} rounded-lg p-6 shadow-xl`}>
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h2 className="text-3xl lg:text-5xl font-bold">{currentItem.title}</h2>
+                                <p className="text-lg lg:text-2xl text-blue-300">{currentItem.responsible}</p>
                             </div>
-
-                            <div className={`${panelBgColor} ${panelTextColor} p-6 rounded-lg shadow-lg`}>
-                                 <div className="text-xs uppercase text-gray-400">Detalhes Técnicos</div>
-                                 <h3 className={`text-2xl font-bold mb-4 ${isReadOnly ? 'text-white' : 'text-black'}`}>Instruções da Equipe</h3>
-                                 <ul className="space-y-3 text-lg">
-                                    {Object.entries(techKeyTranslations).map(([key, label]) => (
-                                        <li key={key} className={`flex justify-between items-center border-b pb-2 ${isReadOnly ? 'border-white/10' : 'border-gray-200'}`}>
-                                            <span className="text-gray-400">{label}</span>
-                                            <span className={`font-semibold text-right ${isReadOnly ? 'text-white' : 'text-gray-900'}`}>{currentItem.technical[key] || '-'}</span>
-                                        </li>
-                                    ))}
-                                 </ul>
-                            </div>
-
-                            <div className={`${panelBgColor} ${panelTextColor} p-6 rounded-lg shadow-lg`}>
-                                <div className="text-xs uppercase text-yellow-400 font-bold">A SEGUIR</div>
-                                {nextItem ? (
-                                    <>
-                                        <h3 className="text-2xl font-bold text-yellow-400">{nextItem.title}</h3>
-                                        <p className="text-gray-400 mb-4">{nextItem.responsible}</p>
-                                        
-                                        {nextItem.description && (
-                                            <div className="mb-4">
-                                                <h4 className="font-semibold text-yellow-400 mb-1">Descrição</h4>
-                                                <p className="text-sm text-gray-300 whitespace-pre-wrap">{nextItem.description}</p>
-                                            </div>
-                                        )}
-                                        
-                                        <div>
-                                            <h4 className="font-semibold text-yellow-400 mb-2">Detalhes Técnicos (A Seguir)</h4>
-                                            <ul className="space-y-1 text-sm">
-                                                {Object.entries(techKeyTranslations).map(([key, label]) => (
-                                                    <li key={key} className="flex justify-between items-center">
-                                                        <span className="text-gray-400">{label}:</span>
-                                                        <span className={`font-medium ${isReadOnly ? 'text-gray-200' : 'text-gray-700'}`}>{nextItem.technical[key] || '-'}</span>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <p className="text-gray-400 mt-2">Fim da ordem de culto.</p>
-                                )}
+                            <div className="text-right">
+                                <div className="text-sm lg:text-base text-gray-300">Horário Previsto</div>
+                                <div className="text-2xl lg:text-4xl font-mono text-white">{currentItem.startTime}</div>
                             </div>
                         </div>
-
-                        <div className="mt-auto">
-                           {!isReadOnly && ( 
-                                <div className="bg-white p-4 rounded-lg mb-4 shadow-md">
-                                    <div className="flex justify-center flex-wrap gap-3"> 
-                                        <button onClick={handlePrevious} className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-lg disabled:opacity-50" disabled={currentItemIndex === 0}>Anterior</button> 
-                                        <button onClick={handleToggleTimer} className={`px-6 py-2 rounded-lg flex items-center gap-2 text-lg text-white ${isRunning ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600'}`}> {isRunning ? <icons.Pause size={20}/> : <icons.Play size={20}/>} {isRunning ? 'Pausar' : 'Iniciar'} </button> 
-                                        <button onClick={handleResetTimer} className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-lg flex items-center gap-2"><icons.RotateCcw size={18}/> Resetar</button> 
-                                        {currentItemIndex < items.length - 1 ? (<button onClick={handleNext} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg">Próximo</button>) : (<button onClick={handleEndWorship} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg flex items-center gap-2"> <icons.CheckCircle size={18}/> Encerrar</button>)} 
-                                        <button onClick={handleResetWorship} className="bg-red-800 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"><icons.Power size={18}/> Reiniciar</button> 
-                                    </div>
-                                </div> 
-                            )}
-                            
-                            {!isReadOnly && (
-                                <div className="bg-white rounded-lg p-4 shadow-md mb-4">
-                                    <h3 className="font-semibold mb-2 text-gray-800">Enviar Aviso para a Equipe</h3>
-                                    <div className="flex flex-wrap gap-2">
-                                        <input type="text" value={announcementText} onChange={e => setAnnouncementText(e.target.value)} placeholder="Digite sua mensagem aqui..." className="flex-grow border-gray-300 rounded-md shadow-sm" />
-                                        <div className="flex items-center gap-2">
-                                            <input type="number" value={announcementDuration} onChange={e => setAnnouncementDuration(parseInt(e.target.value, 10) || 5)} className="w-20 border-gray-300 rounded-md shadow-sm" />
-                                            <span className="text-sm text-gray-600">segundos</span>
-                                        </div>
-                                        <button onClick={handleSendAnnouncement} className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md flex items-center gap-2"> <icons.Send size={16} /> Enviar </button>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className={`${timelineBgColor} rounded-lg p-4`}>
-                                <div className={`flex justify-between items-center mb-3 ${isReadOnly ? 'text-white' : 'text-black'}`}>
-                                    <h3 className="font-semibold text-xl">Linha do Tempo</h3>
-                                    <div className="flex gap-4 items-center">
-                                        <div className={`text-sm font-semibold px-3 py-1 rounded-full ${balance >= 0 ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}> Balanço: {balance >= 0 ? '+' : ''}{Math.round(balance)} min </div>
-                                        <div className={`text-sm font-semibold ${isReadOnly ? 'text-white' : 'text-black'}`}>Término Previsto: <span className={`font-mono px-2 py-1 rounded ${isReadOnly ? 'bg-gray-700' : 'bg-gray-300'}`}>{estimatedEndTime}</span></div>
-                                    </div>
-                                </div>
-                                <div className="flex overflow-x-auto gap-3 pb-2"> {items && items.map((item, index) => { const isCurrent = index === currentItemIndex; const isNext = index === currentItemIndex + 1; const borderColor = isCurrent ? 'border-blue-500' : isNext ? 'border-yellow-400' : 'border-gray-600'; const bgColor = isCurrent ? 'bg-blue-900/50' : 'bg-gray-700/50'; return ( <div key={item.id} className={`flex-shrink-0 w-48 p-3 rounded-lg border-2 transition-all ${borderColor} ${bgColor}`}> <div className="flex justify-between items-start"> <span className="text-xs font-mono text-gray-300">{item.startTime}</span> {item.completed && <icons.CheckCircle size={16} className="text-green-400"/>} </div> <h4 className={`font-semibold text-sm mb-1 ${item.completed ? 'text-gray-400 line-through' : 'text-white'}`}>{item.title}</h4> <div className="text-xs text-gray-400 flex items-center gap-1"><icons.Clock size={12} /> {item.duration} min</div> </div> ); })} </div>
-                            </div>
+                        <div className="my-6 text-center">
+                            <div className={`text-7xl lg:text-9xl font-mono ${isOvertime ? 'text-red-400' : 'text-green-400'}`}>{formatTime(displayTime)}</div>
+                            <div className="text-gray-400 lg:text-lg">Planejado: {formatTime(plannedDurationInSeconds)}</div>
                         </div>
+                        <div className="w-full bg-gray-700 rounded-full h-4 mb-6"><div className={`h-4 rounded-full transition-all duration-500 ${isOvertime ? 'bg-red-500' : 'bg-green-500'}`} style={{ width: `${progressPercentage}%` }}/></div>
+                        {(currentItem.description || (currentItem.technical && Object.values(currentItem.technical).some(v => v && (v.text.trim() !== '-' || v.color !== '#ffffff')))) && ( <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-black/20 p-4 rounded-lg"> {currentItem.description && ( <div> <h4 className="font-semibold text-blue-300 mb-1 flex items-center gap-2"><icons.Info size={16} /> Descrição</h4> <p className="text-sm text-gray-300 whitespace-pre-wrap">{currentItem.description}</p> </div> )} <TechDetailsDisplay technical={currentItem.technical} /> </div> )}
+                        {!isReadOnly && ( <div className="flex justify-center flex-wrap gap-4"> <button onClick={handlePrevious} className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg disabled:opacity-50" disabled={currentItemIndex === 0}>Anterior</button> <button onClick={handleToggleTimer} className={`px-6 py-2 rounded-lg flex items-center gap-2 text-lg ${isRunning ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600'}`}> {isRunning ? <icons.Pause size={20}/> : <icons.Play size={20}/>} {isRunning ? 'Pausar' : 'Iniciar'} </button> <button onClick={handleResetTimer} className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg flex items-center gap-2"><icons.RotateCcw size={18}/> Resetar Timer</button> {currentItemIndex < items.length - 1 ? (<button onClick={handleNext} className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg">Próximo</button>) : (<button onClick={handleEndWorship} className="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg flex items-center gap-2"> <icons.CheckCircle size={18}/> Encerrar Culto</button>)} <button onClick={handleResetWorship} className="bg-red-800 hover:bg-red-700 px-4 py-2 rounded-lg flex items-center gap-2"><icons.Power size={18}/> Reiniciar Culto</button> </div> )}
                     </div>
+                    {nextItem && (
+                        <div className="bg-gray-700 text-white rounded-lg p-4 shadow-lg opacity-90">
+                            <h3 className="font-semibold text-lg text-yellow-300 mb-2 flex items-center gap-2">
+                                <icons.ChevronRight size={20}/> A Seguir: {nextItem.title}
+                                <span className="text-base text-gray-400 font-normal">- {nextItem.responsible}</span>
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {nextItem.description && ( <div> <h4 className="font-semibold text-yellow-400 mb-1 flex items-center gap-2"><icons.Info size={16} /> Descrição</h4> <p className="text-sm text-gray-300 whitespace-pre-wrap">{nextItem.description}</p> </div> )}
+                                <TechDetailsDisplay technical={nextItem.technical} colorClass="text-yellow-400" />
+                            </div>
+                        </div>
+                    )}
+                     {!isReadOnly && (
+                        <div className="bg-white rounded-lg p-4 shadow-md">
+                            <h3 className="font-semibold mb-2">Enviar Aviso para a Equipe</h3>
+                            <div className="flex flex-wrap gap-2">
+                                <input type="text" value={announcementText} onChange={e => setAnnouncementText(e.target.value)} placeholder="Digite sua mensagem aqui..." className="flex-grow border-gray-300 rounded-md shadow-sm" />
+                                <div className="flex items-center gap-2">
+                                    <input type="number" value={announcementDuration} onChange={e => setAnnouncementDuration(parseInt(e.target.value, 10) || 5)} className="w-20 border-gray-300 rounded-md shadow-sm" />
+                                    <span className="text-sm text-gray-600">segundos</span>
+                                </div>
+                                <button onClick={handleSendAnnouncement} className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md flex items-center gap-2">
+                                    <icons.Send size={16} /> Enviar
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                    <div className={`${timelineBgColor} rounded-lg p-4`}>
+                        <div className={`flex justify-between items-center mb-3 ${mainContentColor}`}>
+                            <h3 className="font-semibold text-xl">Linha do Tempo</h3>
+                            <div className="flex gap-4 items-center">
+                                <div className={`text-sm font-semibold px-3 py-1 rounded-full ${balance >= 0 ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}> Balanço: {balance >= 0 ? '+' : ''}{Math.round(balance)} min </div>
+                                <div className="text-sm font-semibold text-white">Término: <span className="font-mono bg-gray-700 px-2 py-1 rounded">{estimatedEndTime}</span></div>
+                            </div>
+                        </div>
+                        <div className="flex overflow-x-auto gap-3 pb-2"> {items && items.map((item, index) => { const isCurrent = index === currentItemIndex; const isNext = index === currentItemIndex + 1; const borderColor = isCurrent ? 'border-blue-500' : isNext ? 'border-yellow-400' : 'border-gray-600'; const bgColor = isCurrent ? 'bg-gray-700' : 'bg-gray-700/50'; return ( <div key={item.id} className={`flex-shrink-0 w-48 p-3 rounded-lg border-2 transition-all ${borderColor} ${bgColor}`}> <div className="flex justify-between items-start"> <span className="text-xs font-mono text-gray-300">{item.startTime}</span> {item.completed && <icons.CheckCircle size={16} className="text-green-400"/>} </div> <h4 className={`font-semibold text-sm mb-1 ${item.completed ? 'text-gray-400 line-through' : 'text-white'}`}>{item.title}</h4> <div className={`text-xs flex items-center gap-1 ${item.completed ? 'text-gray-500' : 'text-gray-300'}`}> <icons.Clock size={12} /> {item.duration} min </div> </div> ); })} </div>
+                    </div>
+                </div>
                 </>
             );
         };
@@ -914,6 +853,3 @@
     </script>
 </body>
 </html>
-
-
-
