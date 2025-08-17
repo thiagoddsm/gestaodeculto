@@ -235,18 +235,19 @@
         };
 
         const App = () => {
-            const [firebase, setFirebase] = useState({ app: null, db: null, auth: null, isAuthReady: false });
-            const [state, setState] = useState({
+            const defaultState = {
                 items: [],
                 cultInfo: { date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric'}), coordenadorTecnico: 'A definir', staff: 'A definir', lead: 'A definir', som: 'A definir', projecao: 'A definir', iluminacao: 'A definir', transmissao: 'A definir', pregador: 'A definir', startTime: '19:00' },
                 liveState: { currentItemIndex: 0, isRunning: false, itemStartTime: null, accumulatedTime: 0, actualStartTime: null, announcement: null, mode: 'planning' }
-            });
+            };
+
+            const [firebase, setFirebase] = useState({ app: null, db: null, auth: null, isAuthReady: false });
+            const [state, setState] = useState(defaultState);
             const [isLoading, setIsLoading] = useState(true);
             const [presets, setPresets] = useState([]);
             const [viewMode, setViewMode] = useState(null);
 
-            // FIX: Removido o uso de `window` globais e agora o estado de Firebase é gerenciado dentro do componente.
-            // Isso torna o componente mais robusto e menos propenso a erros de sincronização.
+            // Get the view mode from the URL on initial load
             useEffect(() => {
                 const urlParams = new URLSearchParams(window.location.search);
                 const mode = urlParams.get('view');
@@ -259,60 +260,61 @@
                 }
             }, []);
 
+            // Handle Firebase initialization and data fetching
             useEffect(() => {
-                const initFirebase = async () => {
+                const initFirebaseAndFetchData = async () => {
                     try {
+                        // Initialize Firebase app
                         const app = initializeApp(window.firebaseConfig);
                         const auth = getAuth(app);
                         const db = getFirestore(app);
 
-                        await signInWithCustomToken(auth, window.initialAuthToken || 'anonymous');
+                        // Authenticate user
+                        if (window.initialAuthToken) {
+                            await signInWithCustomToken(auth, window.initialAuthToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                        
                         setFirebase({ app, db, auth, isAuthReady: true });
+                        
+                        const liveDocRef = doc(db, "artifacts", window.appId, "public", "data", "worship-order", "singleton");
+                        
+                        // Set up real-time listener
+                        const unsubscribe = onSnapshot(liveDocRef, (docSnap) => {
+                            if (docSnap.metadata.hasPendingWrites) {
+                                return;
+                            }
+                            if (docSnap.exists()) {
+                                setState(docSnap.data());
+                            } else {
+                                // If document doesn't exist, create it with default state
+                                setDoc(liveDocRef, defaultState).catch(error => console.error("Error creating default document:", error));
+                            }
+                            setIsLoading(false);
+                        }, (error) => {
+                            console.error("Firebase listener error: ", error);
+                            setIsLoading(false);
+                        });
+                        
+                        return () => unsubscribe();
+
                     } catch (error) {
-                        console.error("Authentication or Firebase initialization error:", error);
+                        console.error("Firebase initialization or authentication failed:", error);
                         setIsLoading(false);
                     }
                 };
-                initFirebase();
-            }, []);
-            
+
+                initFirebaseAndFetchData();
+            }, []); // Empty dependency array means this runs once on mount
+
             const liveDocRef = useMemo(() => {
                 if (!firebase.db) return null;
                 return doc(firebase.db, "artifacts", window.appId, "public", "data", "worship-order", "singleton");
             }, [firebase.db]);
-            const presetsCollectionRef = useMemo(() => liveDocRef ? collection(liveDocRef, "presets") : null, [liveDocRef]);
 
-            const saveStateToFirebase = useCallback(async (newState) => {
-                if (!liveDocRef) return;
-                try {
-                    await setDoc(liveDocRef, newState, { merge: true });
-                } catch (error) { 
-                    console.error("Error saving to Firebase:", error); 
-                }
-            }, [liveDocRef]);
-
-            useEffect(() => {
-                if (!firebase.isAuthReady || !liveDocRef) {
-                     if (firebase.isAuthReady) setIsLoading(false);
-                     return;
-                }
-                const unsubscribe = onSnapshot(liveDocRef, (docSnap) => {
-                    if (docSnap.metadata.hasPendingWrites) return;
-                    if (docSnap.exists()) {
-                        const data = docSnap.data();
-                        setState(data);
-                    } else {
-                        // Initialize state if it doesn't exist
-                        saveStateToFirebase(state);
-                    }
-                    setIsLoading(false);
-                }, (error) => {
-                    console.error("Firebase listener error: ", error);
-                    setIsLoading(false);
-                });
-                return () => unsubscribe();
-            }, [firebase.isAuthReady, liveDocRef, saveStateToFirebase, state]);
-
+            const presetsCollectionRef = useMemo(() => liveDocRef ? collection(doc(firebase.db, "artifacts", window.appId, "public", "data", "worship-order", "singleton"), "presets") : null, [liveDocRef, firebase.db]);
+            
             const fetchPresets = useCallback(async () => {
                 if (!presetsCollectionRef) return;
                 try {
@@ -330,6 +332,15 @@
                 } 
             }, [firebase.isAuthReady, fetchPresets]);
 
+            const saveStateToFirebase = useCallback(async (newState) => {
+                if (!liveDocRef) return;
+                try {
+                    await setDoc(liveDocRef, newState, { merge: true });
+                } catch (error) { 
+                    console.error("Error saving to Firebase:", error); 
+                }
+            }, [liveDocRef]);
+
             const handleStateUpdate = useCallback((updater) => {
                 setState(currentState => {
                     const newState = typeof updater === 'function' ? updater(currentState) : updater;
@@ -338,7 +349,7 @@
                 });
             }, [saveStateToFirebase]);
 
-            if (isLoading || viewMode === null || !firebase.isAuthReady) {
+            if (isLoading || viewMode === null) {
                 return <div className="flex justify-center items-center h-screen bg-slate-950 text-white">Carregando...</div>;
             }
 
