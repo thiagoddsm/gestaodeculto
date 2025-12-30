@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="google-adsense-account" content="ca-pub-4895923678765380">
-    <title>Gestor de Culto Ao Vivo</title>
+    <title>Gestor de Culto & Briefing Pro - V7</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -12,1138 +11,528 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     
-    <!-- React e Babel -->
+    <!-- Bibliotecas Externas -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <!-- SheetJS para manipulação de Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-
-    <!-- jsPDF para exportação de PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
-    
-    <!-- Firebase -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, addDoc, deleteDoc, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{"apiKey":"AIzaSyCYaOPtQdD1hU29awdgeN-rEGaoLGBGYBM","authDomain":"gestao-de-culto.firebaseapp.com","projectId":"gestao-de-culto","storageBucket":"gestao-de-culto.appspot.com","messagingSenderId":"843566675046","appId":"1:843566675046:web:cc1e54a813827f4502a9a7"}');
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'gestao-de-culto';
 
-        try {
-            const app = initializeApp(firebaseConfig);
-            const db = getFirestore(app);
-            const auth = getAuth(app);
-            window.db = db;
-            window.auth = auth;
-            window.appId = appId;
-            window.firestore = { doc, getDoc, setDoc, onSnapshot, collection, getDocs, addDoc, deleteDoc, serverTimestamp, updateDoc };
-            window.firebaseAuth = { signInAnonymously, signInWithCustomToken };
-            window.jsPDF = window.jspdf.jsPDF;
-        } catch (e) {
-            console.error("Erro ao inicializar o Firebase: ", e);
-        }
-    </script>
-    
- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4895923678765380"
-     crossorigin="anonymous"></script>
-    
     <style>
-        body { 
-            font-family: 'Inter', sans-serif;
-            background-color: #020617; /* bg-slate-950 */
+        body { font-family: 'Inter', sans-serif; background-color: #020617; color: #f8fafc; margin: 0; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .font-serif { font-family: 'Playfair Display', serif; }
+        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        
+        /* Estilo do Modo Ao Vivo - Imersivo */
+        .live-bg { background-color: #000000 !important; color: white !important; height: 100vh; width: 100vw; }
+        .timer-giant { font-size: min(25vw, 50vh); line-height: 1; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+        .agora-label { color: #64748b; font-weight: 900; letter-spacing: 0.3em; font-size: 2.5rem; }
+        .a-seguir-label { color: #f59e0b; opacity: 0.8; font-weight: 900; letter-spacing: 0.3em; font-size: 2.5rem; }
+
+        @media screen {
+            .paper-view {
+                width: 210mm;
+                min-height: 297mm;
+                background: white;
+                color: #0f172a;
+                box-shadow: 0 0 50px rgba(0,0,0,0.5);
+                margin: 0 auto;
+                padding: 20mm;
+                border-radius: 4px;
+            }
         }
-        .font-mono { font-family: 'Roboto Mono', monospace; }
-        .hidden-file-input { display: none; }
-        .presentation-mode {
-            background-color: #020617; /* bg-slate-950 */
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; color: black; }
+            .paper-view { width: 100%; margin: 0; box-shadow: none; padding: 10mm; }
         }
-        /* Custom style for color input to remove default appearance */
-        input[type="color"] {
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            width: 2rem; /* w-8 */
-            height: 2rem; /* h-8 */
-            padding: 0;
-            border: none;
-            border-radius: 0.375rem; /* rounded-md */
-            cursor: pointer;
-            background-color: transparent;
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-        input[type="color"]::-webkit-color-swatch-wrapper {
-            padding: 0;
+        .animate-fade-in { animation: fade-in 0.4s ease-out forwards; }
+        
+        @keyframes pulse-soft {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
         }
-        input[type="color"]::-webkit-color-swatch {
-            border: 1px solid #475569; /* border-slate-600 */
-            border-radius: 0.375rem; /* rounded-md */
-        }
-        /* Hide scrollbar for timeline */
-        .timeline-container::-webkit-scrollbar {
-            display: none;
-        }
-        .timeline-container {
-            -ms-overflow-style: none;  /* IE and Edge */
-            scrollbar-width: none;  /* Firefox */
-        }
+        .animate-pulse-soft { animation: pulse-soft 2s infinite; }
     </style>
 </head>
 <body>
-    <div id="root">
-        <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #020617;">
-            <span style="color: white; font-family: 'Inter', sans-serif;">Carregando aplicativo...</span>
-        </div>
-    </div>
+    <div id="root"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setDoc, collection, addDoc, updateDoc, serverTimestamp, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{"apiKey":"AIzaSyCYaOPtQdD1hU29awdgeN-rEGaoLGBGYBM","authDomain":"gestao-de-culto.firebaseapp.com","projectId":"gestao-de-culto","storageBucket":"gestao-de-culto.appspot.com","messagingSenderId":"843566675046","appId":"1:843566675046:web:cc1e54a813827f4502a9a7"}');
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'gestao-de-culto-v7';
+
+        window.FB_INSTANCE = {
+            app: initializeApp(firebaseConfig),
+            auth: getAuth(),
+            db: getFirestore(),
+            utils: { doc, onSnapshot, setDoc, collection, addDoc, updateDoc, serverTimestamp, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getDocs, deleteDoc },
+            appId
+        };
+    </script>
 
     <script type="text/babel">
-        const { useState, useEffect, useCallback, useMemo, useRef } = React;
+        const { useState, useEffect, useMemo, useRef, useCallback } = React;
 
-        const SvgIcon = ({ size = 24, className = '', children }) => ( <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg> );
+        // --- GLOBAL UTILS ---
+        const formatTime = (seconds) => {
+            const absSeconds = Math.abs(Math.floor(seconds));
+            const mins = Math.floor(absSeconds / 60);
+            const secs = absSeconds % 60;
+            return `${seconds < 0 ? '-' : ''}${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        };
+
+        const calculateTimes = (items, start) => {
+            let curr = new Date(`1970-01-01T${start || '00:00'}:00`);
+            return items.map(it => {
+                const st = isNaN(curr.getTime()) ? '--:--' : curr.toTimeString().slice(0, 5);
+                curr.setMinutes(curr.getMinutes() + (Number(it.duration) || 0));
+                return { ...it, startTime: st };
+            });
+        };
+
+        const SvgIcon = ({ size = 24, className = '', children }) => ( 
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg> 
+        );
+
         const icons = {
-            Plus: (props) => <SvgIcon {...props}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></SvgIcon>,
-            Play: (props) => <SvgIcon {...props}><polygon points="5 3 19 12 5 21 5 3" /></SvgIcon>,
-            Pause: (props) => <SvgIcon {...props}><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></SvgIcon>,
-            Settings: (props) => <SvgIcon {...props}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l-.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></SvgIcon>,
-            Monitor: (props) => <SvgIcon {...props}><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></SvgIcon>,
-            ChevronUp: (props) => <SvgIcon {...props}><polyline points="18 15 12 9 6 15" /></SvgIcon>,
-            ChevronDown: (props) => <SvgIcon {...props}><polyline points="6 9 12 15 18 9" /></SvgIcon>,
-            Trash2: (props) => <SvgIcon {...props}><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></SvgIcon>,
-            CheckCircle: (props) => <SvgIcon {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></SvgIcon>,
-            RotateCcw: (props) => <SvgIcon {...props}><path d="M3 2v6h6" /><path d="M3 13a9 9 0 1 0 3-7.7L3 8" /></SvgIcon>,
-            Clock: (props) => <SvgIcon {...props}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></SvgIcon>,
-            UploadCloud: (props) => <SvgIcon {...props}><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" /><path d="M12 12v9" /><path d="m16 16-4-4-4 4" /></SvgIcon>,
-            DownloadCloud: (props) => <SvgIcon {...props}><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" /><path d="M12 12v9" /><path d="m8 17 4 4 4-4" /></SvgIcon>,
-            Save: (props) => <SvgIcon {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></SvgIcon>,
-            Power: (props) => <SvgIcon {...props}><path d="M18.36 6.64a9 9 0 1 1-12.73 0" /><line x1="12" y1="2" x2="12" y2="12" /></SvgIcon>,
-            Send: (props) => <SvgIcon {...props}><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></SvgIcon>,
-            FileText: (props) => <SvgIcon {...props}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></SvgIcon>,
-            Sound: (props) => <SvgIcon {...props}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></SvgIcon>,
-            Lightbulb: (props) => <SvgIcon {...props}><path d="M9 18h6v2a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-2Z"/><path d="M12 2A7 7 0 0 0 5 9c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74A7 7 0 0 0 12 2Z"/></SvgIcon>,
-            Camera: (props) => <SvgIcon {...props}><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></SvgIcon>,
-            Mic: (props) => <SvgIcon {...props}><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></SvgIcon>,
-            Users: (props) => <SvgIcon {...props}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></SvgIcon>,
-            Video: (props) => <SvgIcon {...props}><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></SvgIcon>,
-        };
-        
-        const CircularProgressBar = ({ size, strokeWidth, percentage, color }) => {
-            const viewBox = `0 0 ${size} ${size}`;
-            const radius = (size - strokeWidth) / 2;
-            const circumference = radius * 2 * Math.PI;
-            const strokeDashoffset = circumference - (percentage / 100) * circumference;
-
-            return (
-                <svg width={size} height={size} viewBox={viewBox} className="-rotate-90">
-                    <circle
-                        className="text-slate-700"
-                        stroke="currentColor"
-                        strokeWidth={strokeWidth}
-                        fill="transparent"
-                        r={radius}
-                        cx={size / 2}
-                        cy={size / 2}
-                    />
-                    <circle
-                        className={`transition-all duration-300 ${color}`}
-                        stroke="currentColor"
-                        strokeWidth={strokeWidth}
-                        strokeLinecap="round"
-                        fill="transparent"
-                        r={radius}
-                        cx={size / 2}
-                        cy={size / 2}
-                        strokeDasharray={circumference}
-                        strokeDashoffset={strokeDashoffset}
-                    />
-                </svg>
-            );
+            Plus: (p) => <SvgIcon {...p}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></SvgIcon>,
+            Play: (p) => <SvgIcon {...p}><polygon points="5 3 19 12 5 21 5 3" /></SvgIcon>,
+            Pause: (p) => <SvgIcon {...p}><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></SvgIcon>,
+            Settings: (p) => <SvgIcon {...p}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0 2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></SvgIcon>,
+            Monitor: (p) => <SvgIcon {...p}><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></SvgIcon>,
+            Trash2: (p) => <SvgIcon {...p}><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></SvgIcon>,
+            CheckCircle: (p) => <SvgIcon {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></SvgIcon>,
+            Roteiro: (p) => <SvgIcon {...p}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></SvgIcon>,
+            Skip: (p) => <SvgIcon {...p}><polygon points="5 4 15 12 5 20 5 4" /><line x1="19" y1="5" x2="19" y2="19" /></SvgIcon>,
+            Print: (p) => <SvgIcon {...p}><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></SvgIcon>,
+            Send: (p) => <SvgIcon {...p}><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></SvgIcon>
         };
 
-        const AnnouncementBanner = ({ announcement }) => {
-            const [isVisible, setIsVisible] = useState(false);
-
-            useEffect(() => {
-                if (!announcement || !announcement.message || !announcement.timestamp) {
-                    setIsVisible(false);
-                    return;
-                }
-
-                const checkVisibility = () => {
-                    const now = new Date();
-                    const startTime = new Date(announcement.timestamp);
-                    const endTime = new Date(startTime.getTime() + (announcement.duration || 5) * 1000);
-
-                    if (now >= startTime && now <= endTime) {
-                        setIsVisible(true);
-                    } else {
-                        setIsVisible(false);
-                    }
-                };
-
-                checkVisibility();
-                const interval = setInterval(checkVisibility, 1000);
-
-                return () => clearInterval(interval);
-            }, [announcement]);
-
-            if (!isVisible) return null;
-
-            return (
-                <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-yellow-400 text-black p-4 rounded-lg shadow-lg z-50 w-11/12 max-w-4xl text-center">
-                    <p className="font-bold text-lg">{announcement.message}</p>
-                </div>
-            );
-        };
+        // --- SUB-COMPONENTS ---
 
         const LiveClock = ({ className = '' }) => {
             const [time, setTime] = useState(new Date());
             useEffect(() => {
-                const timerId = setInterval(() => setTime(new Date()), 1000);
-                return () => clearInterval(timerId);
+                const t = setInterval(() => setTime(new Date()), 1000);
+                return () => clearInterval(t);
             }, []);
-            
-            return (
-                <div className={`font-mono ${className}`}>
-                    {time.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                </div>
-            );
-        };
-        
-        const Modal = ({ show, onClose, title, children, footer }) => {
-            if (!show) return null;
-            return (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
-                    <div className="bg-slate-900 rounded-lg p-6 w-full max-w-md shadow-xl border border-slate-700" onClick={e => e.stopPropagation()}>
-                        <h2 className="text-xl font-semibold mb-4 text-slate-100">{title}</h2>
-                        <div className="mb-6 text-slate-300">{children}</div>
-                        <div className="flex justify-end gap-3">
-                            {footer}
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        const useModal = () => {
-            const [modalState, setModalState] = useState({ show: false, title: '', children: null, footer: null });
-            const showModal = ({ title, children, footer }) => setModalState({ show: true, title, children, footer });
-            const hideModal = () => setModalState({ show: false, title: '', children: null, footer: null });
-            return { modalState, showModal, hideModal };
+            return <div className={className}>{time.toLocaleTimeString('pt-BR')}</div>;
         };
 
         const App = () => {
+            const [view, setView] = useState('planning');
+            const [isLoading, setIsLoading] = useState(true);
+            const [user, setUser] = useState(null);
+            
             const [state, setState] = useState({
-                items: [],
-                cultInfo: { date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric'}), coordenadorTecnico: 'A definir', staff: 'A definir', lead: 'A definir', som: 'A definir', projecao: 'A definir', iluminacao: 'A definir', transmissao: 'A definir', pregador: 'A definir', startTime: '19:00' },
+                items: [
+                    { id: '1', title: 'Cronômetro', duration: 5, responsible: 'Mídia', description: '', technical: { projection: 'Timer 5min', sound: 'Background', lighting: 'Pre-show' }, completed: false, itemColor: '#334155' },
+                    { id: '2', title: 'Abertura: Louvor', duration: 15, responsible: 'Min. Louvor', description: 'Tempo de festa, Louve, No meio dos louvores', technical: { projection: 'Lyrics', sound: 'Mix Banda', lighting: 'Wash Colorido' }, completed: false, itemColor: '#4f46e5' },
+                    { id: '3', title: 'Palavra de gratidão', duration: 5, responsible: 'Pr Juliano', description: '', technical: { projection: 'Nome Pr Juliano', sound: 'Mic Pr Juliano', lighting: 'Foco Púlpito' }, completed: false, itemColor: '#0891b2' },
+                    { id: '4', title: 'Vídeo Retrospectiva', duration: 5, responsible: 'Mídia', description: 'Confirmar arquivo final', technical: { projection: 'Vídeo Retro', sound: 'Áudio Vídeo', lighting: 'Blackout' }, completed: false, itemColor: '#7c3aed' },
+                    { id: '5', title: 'Louvor', duration: 15, responsible: 'Min. Louvor', description: 'Algo novo vindo, Santo Pra Sempre, Quem é Esse', technical: { projection: 'Lyrics', sound: 'Mix Banda', lighting: 'Moving Heads' }, completed: false, itemColor: '#4f46e5' },
+                    { id: '6', title: 'Reflexão e oração – 2026', duration: 10, responsible: 'Pr Marcio', description: 'Planos, sonhos e metas. Música: Seja o Centro', technical: { projection: 'Versículo', sound: 'Pad fundo', lighting: 'Âmbar' }, completed: false, itemColor: '#059669' },
+                    { id: '7', title: 'Ofertório', duration: 10, responsible: 'Pr Erick', description: 'Oferta de gratidão. Louvor: Gratidão + Te Agradeço', technical: { projection: 'QR Code', sound: 'Mic Pr Erick', lighting: 'Geral' }, completed: false, itemColor: '#ca8a04' },
+                    { id: '8', title: 'Palavra', duration: 15, responsible: 'Pr Felipe', description: 'Louvor: Novo dia, Enquanto oro', technical: { projection: 'Esboço', sound: 'Mic Pr Felipe', lighting: 'Foco' }, completed: false, itemColor: '#2563eb' },
+                    { id: '9', title: 'Ceia', duration: 15, responsible: 'Pastores', description: 'Louvor: Nada além do sangue', technical: { projection: 'Ceia', sound: 'Reverb Alto', lighting: 'Vermelho' }, completed: false, itemColor: '#dc2626' },
+                    { id: '10', title: 'Mensagem', duration: 30, responsible: 'Pr Hugo Campos', description: 'Palavra da virada', technical: { projection: 'Esboço', sound: 'Mic Pr Hugo', lighting: 'Púlpito' }, completed: false, itemColor: '#1e293b' },
+                    { id: '11', title: 'Apelo', duration: 5, responsible: 'Pr Hugo Campos', description: '', technical: { projection: 'Background', sound: 'Teclado fundo', lighting: 'Warm White' }, completed: false, itemColor: '#b91c1c' },
+                    { id: '12', title: 'Louvor: Eu e minha casa', duration: 5, responsible: 'Min. Louvor', description: '', technical: { projection: 'Lyrics', sound: 'Mix Banda', lighting: 'Full Stage' }, completed: false, itemColor: '#4f46e5' },
+                    { id: '13', title: 'Oração com as famílias', duration: 10, responsible: 'Pastores', description: '', technical: { projection: 'Família', sound: 'BG Instrumental', lighting: 'House 50%' }, completed: false, itemColor: '#059669' },
+                    { id: '14', title: 'Virada', duration: 10, responsible: 'Todos', description: 'Contagem regressiva', technical: { projection: 'Countdown', sound: 'Celebração', lighting: 'Strobe' }, completed: false, itemColor: '#f59e0b' }
+                ],
+                cultInfo: { titulo: 'Culto da Virada', tema: 'O que almejamos para 2026?', date: '2025-12-31', startTime: '21:25', pregador: 'Pr Hugo Campos', dirigente: 'Louvor + Pastores', local: 'Templo Sede' },
+                equipes: { coordenador: '', saude: 'Equipe Alpha', sonoplastia: 'Mesa 1', projecao: 'Multimídia', transmissao: 'Live', recepcao: 'Diaconato' },
+                obsDepartamentos: { midia: '- Haverá thumb específica para projeção?\n- Haverá slide na pregação?', musica: '- Banda posicionada: 21:00\n- Música ambiente (Spotify): 21:10', staff: '- Coordenador geral definido?', diaconato: '- Água e microfone para pregadores.' },
                 liveState: { currentItemIndex: 0, isRunning: false, itemStartTime: null, accumulatedTime: 0, actualStartTime: null, announcement: null }
             });
-            const [isLoading, setIsLoading] = useState(true);
-            const [isAuthReady, setIsAuthReady] = useState(false);
-            const [presets, setPresets] = useState([]);
-            const [viewMode, setViewMode] = useState(null);
-            
-            const { db, appId, firestore, auth, firebaseAuth } = window;
-            const liveDocRef = useMemo(() => {
-                if (!db || !firestore || !appId) return null;
-                return firestore.doc(db, "artifacts", appId, "public", "data", "worship-order", "singleton");
-            }, [db, firestore, appId]);
-            const presetsCollectionRef = useMemo(() => liveDocRef ? firestore.collection(liveDocRef, "presets") : null, [liveDocRef, firestore]);
 
+            const { db, appId, utils } = window.FB_INSTANCE;
+
+            // --- SYNC ENGINE ---
             useEffect(() => {
-                const urlParams = new URLSearchParams(window.location.search);
-                const mode = urlParams.get('view');
-                if (mode === 'team') {
-                    setViewMode('team');
-                } else if (mode === 'palco') {
-                    setViewMode('palco');
-                } else {
-                    setViewMode('coordinator');
-                }
-            }, []);
+                const initFb = async () => {
+                    const { auth, utils, db, appId } = window.FB_INSTANCE;
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await utils.signInWithCustomToken(auth, __initial_auth_token);
+                    } else { await utils.signInAnonymously(auth); }
 
-            useEffect(() => {
-                if (!auth || !firebaseAuth) { setIsLoading(false); return; }
-                const authenticate = async () => {
-                    try {
-                        if (auth.currentUser) {
-                            setIsAuthReady(true);
-                            return;
-                        }
-                        if (typeof __initial_auth_token !== 'undefined') {
-                            await firebaseAuth.signInWithCustomToken(auth, __initial_auth_token);
-                        } else {
-                            await firebaseAuth.signInAnonymously(auth);
-                        }
-                        setIsAuthReady(true);
-                    } catch (error) { console.error("Authentication error:", error); setIsLoading(false); }
-                };
-                authenticate();
-            }, [auth, firebaseAuth]);
-
-            const saveStateToFirebase = useCallback(async (newState) => {
-                if (!liveDocRef) return;
-                try {
-                    await firestore.setDoc(liveDocRef, newState, { merge: true });
-                } catch (error) { 
-                    console.error("Error saving to Firebase:", error); 
-                }
-            }, [liveDocRef, firestore]);
-
-            useEffect(() => {
-                if (!isAuthReady || !liveDocRef) { if(isAuthReady) setIsLoading(false); return; }
-                const unsubscribe = firestore.onSnapshot(liveDocRef, (docSnap) => {
-                    if (docSnap.metadata.hasPendingWrites) return;
-                    if (docSnap.exists()) {
-                        const data = docSnap.data();
-                        if (data.items && data.cultInfo && data.liveState) {
-                            setState(data);
-                        }
-                    } else {
-                        saveStateToFirebase(state);
-                    }
-                    setIsLoading(false);
-                }, (error) => {
-                    console.error("Firebase listener error: ", error);
-                    setIsLoading(false);
-                });
-                return () => unsubscribe();
-            }, [isAuthReady, liveDocRef, saveStateToFirebase]);
-
-            const fetchPresets = useCallback(async () => {
-                if (!presetsCollectionRef || !firestore) return;
-                try {
-                    const snapshot = await firestore.getDocs(presetsCollectionRef);
-                    const presetsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setPresets(presetsData);
-                } catch (error) { console.error("Error loading presets:", error); }
-            }, [presetsCollectionRef, firestore]);
-
-            useEffect(() => { if(isAuthReady) { fetchPresets(); } }, [isAuthReady, fetchPresets]);
-
-            const handleStateUpdate = useCallback((updater) => {
-                setState(currentState => {
-                    const newState = typeof updater === 'function' ? updater(currentState) : updater;
-                    saveStateToFirebase(newState);
-                    return newState;
-                });
-            }, [saveStateToFirebase]);
-
-            if (isLoading || viewMode === null) {
-                return <div className="flex justify-center items-center h-screen bg-slate-950 text-white">Carregando...</div>;
-            }
-
-            if (viewMode === 'team') {
-                return <TeamView state={state} />;
-            }
-            
-            if (viewMode === 'palco') {
-                return <StageView state={state} />;
-            }
-
-            return (
-                <CoordinatorController 
-                    state={state} 
-                    handleStateUpdate={handleStateUpdate}
-                    presets={presets}
-                    fetchPresets={fetchPresets}
-                />
-            );
-        };
-
-        const CoordinatorController = ({ state, handleStateUpdate, presets, fetchPresets }) => {
-            const [mode, setMode] = useState('planning');
-            const [showTechnical, setShowTechnical] = useState(true);
-            const [selectedPresetId, setSelectedPresetId] = useState('');
-            const [loadedPreset, setLoadedPreset] = useState(null);
-            const [isDirty, setIsDirty] = useState(false);
-            const fileInputRef = useRef(null);
-            const { firestore, db, appId } = window;
-            const { modalState, showModal, hideModal } = useModal();
-
-            const handleLocalUpdate = useCallback((updater) => {
-                handleStateUpdate(updater);
-                setIsDirty(true);
-            }, [handleStateUpdate]);
-
-            const calculateStartTimes = (items, startTime) => {
-                if (!startTime) { startTime = '00:00' }
-                let cumulativeTime = new Date(`1970-01-01T${startTime}:00`);
-                if (isNaN(cumulativeTime)) return items.map(item => ({...item, startTime: '--:--'}));
-                return items.map(item => {
-                    const itemStartTime = cumulativeTime.toTimeString().slice(0, 5);
-                    cumulativeTime.setMinutes(cumulativeTime.getMinutes() + (Number(item.duration) || 0));
-                    return { ...item, startTime: itemStartTime };
-                });
-            };
-
-            const handleCultInfoChange = (field, value) => {
-                handleLocalUpdate(prevState => {
-                    const newCultInfo = { ...prevState.cultInfo, [field]: value };
-                    if (field === 'startTime') {
-                        const newItems = calculateStartTimes(prevState.items, value);
-                        return { ...prevState, cultInfo: newCultInfo, items: newItems };
-                    }
-                    return { ...prevState, cultInfo: newCultInfo };
-                });
-            };
-            
-            const createNewItem = () => ({
-                id: crypto.randomUUID(), title: 'Novo Momento', duration: 5, type: 'palavra', responsible: 'A definir', description: '',
-                itemColor: '#3B82F6',
-                technical: { projection: '', sound: '', microphone: '', lighting: '', camera: '', staff: '', transmission: '' },
-                completed: false, actualDuration: null, actualStartTime: null, actualEndTime: null
-            });
-
-            const addItem = () => {
-                handleLocalUpdate(prevState => {
-                    const newItem = createNewItem();
-                    const newItems = calculateStartTimes([...prevState.items, newItem], prevState.cultInfo.startTime);
-                    return { ...prevState, items: newItems };
-                });
-            };
-
-            const updateItem = (id, updates) => {
-                handleLocalUpdate(prevState => {
-                    let newItems = prevState.items.map(item => item.id === id ? { ...item, ...updates } : item);
-                    if (updates.duration !== undefined) { newItems = calculateStartTimes(newItems, prevState.cultInfo.startTime); }
-                    return { ...prevState, items: newItems };
-                });
-            };
-            
-            const deleteItem = (id) => {
-                showModal({
-                    title: "Excluir Item",
-                    children: <p>Tem certeza que deseja excluir este item?</p>,
-                    footer: <>
-                        <button onClick={hideModal} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-md">Cancelar</button>
-                        <button onClick={() => {
-                            handleLocalUpdate(prevState => {
-                                const newItems = calculateStartTimes(prevState.items.filter(item => item.id !== id), prevState.cultInfo.startTime);
-                                return { ...prevState, items: newItems };
+                    utils.onAuthStateChanged(auth, (u) => {
+                        setUser(u);
+                        if (u) {
+                            utils.onSnapshot(utils.doc(db, "artifacts", appId, "public", "data", "live", "state"), (snap) => {
+                                if (snap.metadata.hasPendingWrites) return; 
+                                if (snap.exists()) {
+                                    setState(snap.data());
+                                }
+                                setIsLoading(false);
                             });
-                            hideModal();
-                        }} className="px-4 py-2 bg-red-600 text-white rounded-md">Excluir</button>
-                    </>
-                });
-            };
-            
-            const moveItem = (index, direction) => {
-                handleLocalUpdate(prevState => {
-                    const currentItems = [...prevState.items];
-                    const newIndex = index + direction;
-                    if (newIndex < 0 || newIndex >= currentItems.length) return prevState;
-                    const item = currentItems.splice(index, 1)[0];
-                    currentItems.splice(newIndex, 0, item);
-                    const newItems = calculateStartTimes(currentItems, prevState.cultInfo.startTime);
-                    return { ...prevState, items: newItems };
-                });
-            };
-            
-            const handleSaveAsNewPreset = (name) => {
-                const worshipDataBaseRef = firestore.doc(db, "artifacts", appId, "public", "data", "worship-order", "singleton");
-                const presetsCollectionRef = firestore.collection(worshipDataBaseRef, "presets");
-                const presetData = { name: name.trim(), savedAt: new Date().toISOString(), items: state.items, cultInfo: state.cultInfo };
-                firestore.addDoc(presetsCollectionRef, presetData)
-                    .then((docRef) => {
-                        fetchPresets();
-                        setLoadedPreset({ id: docRef.id, name: name.trim() });
-                        setIsDirty(false);
-                        hideModal();
-                    })
-                    .catch(error => {
-                        console.error("Erro ao salvar o preset:", error);
-                        hideModal();
+                        }
                     });
-            };
-            
-            const handleUpdatePreset = async () => {
-                if (!loadedPreset) return;
-                const presetRef = firestore.doc(db, "artifacts", appId, "public", "data", "worship-order", "singleton", "presets", loadedPreset.id);
-                const presetData = { name: loadedPreset.name, savedAt: new Date().toISOString(), items: state.items, cultInfo: state.cultInfo };
-                await firestore.updateDoc(presetRef, presetData);
-                setIsDirty(false);
-                fetchPresets();
-                hideModal();
-            };
-
-            const handleSaveClick = () => {
-                if (loadedPreset && isDirty) {
-                    showModal({
-                        title: `Atualizar Preset "${loadedPreset.name}"?`,
-                        children: <p>Você modificou este preset. Deseja salvar as alterações no preset original ou criar um novo?</p>,
-                        footer: <>
-                            <button onClick={hideModal} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-md">Cancelar</button>
-                            <button onClick={() => {
-                                hideModal();
-                                handleSavePreset(true);
-                            }} className="px-4 py-2 bg-green-600 text-white rounded-md">Salvar como Novo</button>
-                            <button onClick={handleUpdatePreset} className="px-4 py-2 bg-indigo-600 text-white rounded-md">Atualizar Existente</button>
-                        </>
-                    });
-                } else {
-                    handleSavePreset(false);
-                }
-            };
-            
-            const handleSavePreset = (isSaveAsNew = false) => {
-                let presetName = state.cultInfo.date || "Modelo de Culto Padrão";
-                const onSave = () => {
-                    if (!presetName.trim()) { return; }
-                    handleSaveAsNewPreset(presetName);
                 };
-
-                showModal({
-                    title: isSaveAsNew ? "Salvar Como Novo Preset" : "Salvar Novo Preset",
-                    children: <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-1">Nome do Preset</label>
-                        <input type="text" defaultValue={presetName} onChange={e => presetName = e.target.value}
-                            className="w-full bg-slate-800 border-slate-700 text-slate-200 rounded-md shadow-sm" placeholder="Digite o nome do preset" />
-                    </div>,
-                    footer: <>
-                        <button onClick={hideModal} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-md">Cancelar</button>
-                        <button onClick={onSave} className="px-4 py-2 bg-indigo-600 text-white rounded-md">Salvar</button>
-                    </>
-                });
-            };
-
-            const handleLoadPreset = (presetId) => {
-                if (!presetId) return;
-                const preset = presets.find(p => p.id === presetId);
-                if (preset) {
-                    showModal({
-                        title: "Carregar Preset",
-                        children: <p>Isso substituirá a ordem de culto atual. Deseja continuar?</p>,
-                        footer: <>
-                            <button onClick={hideModal} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-md">Cancelar</button>
-                            <button onClick={() => {
-                                const newItems = calculateStartTimes(preset.items, preset.cultInfo.startTime);
-                                handleStateUpdate({ ...state, items: newItems, cultInfo: preset.cultInfo });
-                                setLoadedPreset({id: preset.id, name: preset.name});
-                                setIsDirty(false);
-                                hideModal();
-                            }} className="px-4 py-2 bg-yellow-500 text-black rounded-md">Carregar</button>
-                        </>
-                    });
-                }
-            };
-            
-            const handleDeletePreset = async () => {
-                if (!selectedPresetId) { return; }
-                const presetToDelete = presets.find(p => p.id === selectedPresetId);
-                if (!presetToDelete) return;
-                showModal({
-                    title: "Excluir Preset",
-                    children: <p>Tem certeza que deseja excluir o preset "{presetToDelete.name}"?</p>,
-                    footer: <>
-                        <button onClick={hideModal} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-md">Cancelar</button>
-                        <button onClick={async () => {
-                            const worshipDataBaseRef = firestore.doc(db, "artifacts", appId, "public", "data", "worship-order", "singleton");
-                            const presetsCollectionRef = firestore.collection(worshipDataBaseRef, "presets");
-                            const docRef = firestore.doc(presetsCollectionRef, selectedPresetId);
-                            await firestore.deleteDoc(docRef);
-                            setSelectedPresetId('');
-                            if (loadedPreset && loadedPreset.id === selectedPresetId) {
-                                setLoadedPreset(null);
-                            }
-                            fetchPresets();
-                            hideModal();
-                        }} className="px-4 py-2 bg-red-600 text-white rounded-md">Excluir</button>
-                    </>
-                });
-            };
-
-            const handleDownloadExcelTemplate = () => {
-                const data = [{ title: "Música de Abertura", duration: 10, type: "música", responsible: "Ministério de Louvor", description: "Usar playback e projeção com letra." }];
-                const worksheet = XLSX.utils.json_to_sheet(data);
-                const workbook = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(workbook, worksheet, "Ordem de Culto");
-                worksheet["!cols"] = [ { wch: 30 }, { wch: 10 }, { wch: 15 }, { wch: 25 }, { wch: 50 }, ];
-                XLSX.writeFile(workbook, "modelo_ordem_de_culto.xlsx");
-            };
-
-            const handleImportExcel = (event) => {
-                const file = event.target.files[0];
-                if (file) {
-                    showModal({
-                        title: "Importar Planilha",
-                        children: <p>Isso substituirá a ordem de culto atual. Deseja continuar?</p>,
-                        footer: <>
-                            <button onClick={() => { event.target.value = null; hideModal(); }} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-md">Cancelar</button>
-                            <button onClick={() => {
-                                const reader = new FileReader();
-                                reader.onload = (e) => {
-                                    try {
-                                        const data = e.target.result;
-                                        const workbook = XLSX.read(data, { type: 'array' });
-                                        const sheetName = workbook.SheetNames[0];
-                                        const worksheet = workbook.Sheets[sheetName];
-                                        const json = XLSX.utils.sheet_to_json(worksheet);
-                                        const newItemsFromExcel = json.map(row => ({ ...createNewItem(), title: row.title || 'Sem Título', duration: parseInt(row.duration, 10) || 5, type: row.type || 'palavra', responsible: row.responsible || 'A definir', description: row.description || '' }));
-                                        handleLocalUpdate(prevState => ({ ...prevState, items: calculateStartTimes(newItemsFromExcel, prevState.cultInfo.startTime) }));
-                                        setLoadedPreset(null);
-                                    } catch(error) { console.error("Erro no SheetJS:", error); }
-                                };
-                                reader.readAsArrayBuffer(file);
-                                event.target.value = null;
-                                hideModal();
-                            }} className="px-4 py-2 bg-green-600 text-white rounded-md">Importar</button>
-                        </>
-                    });
-                }
-            };
-
-            const handleExportPDF = () => {
-                const doc = new window.jsPDF();
-                const cultInfo = state.cultInfo;
-                const items = state.items;
-                const actualStartTime = state.liveState.actualStartTime ? new Date(state.liveState.actualStartTime).toLocaleTimeString('pt-BR') : 'Não iniciado';
-
-                doc.setFontSize(18);
-                doc.text("Relatório do Culto", 14, 22);
-                doc.setFontSize(11);
-                doc.text(`Data: ${cultInfo.date}`, 14, 30);
-                doc.text(`Pregador: ${cultInfo.pregador}`, 14, 36);
-                doc.text(`Início Real do Culto: ${actualStartTime}`, 14, 42);
-
-                const tableColumn = ["Item", "Duração Planejada", "Duração Real", "Início Real", "Fim Real", "Desvio"];
-                const tableRows = [];
-
-                items.forEach(item => {
-                    const planned = item.duration || 0;
-                    const actual = item.actualDuration ? (item.actualDuration / 60) : null;
-                    const deviation = (actual !== null) ? (planned - actual) : null;
-                    
-                    const rowData = [
-                        item.title,
-                        `${planned} min`,
-                        actual !== null ? `${actual.toFixed(1)} min` : 'N/A',
-                        item.actualStartTime ? new Date(item.actualStartTime).toLocaleTimeString('pt-BR') : 'N/A',
-                        item.actualEndTime ? new Date(item.actualEndTime).toLocaleTimeString('pt-BR') : 'N/A',
-                        deviation !== null ? `${deviation.toFixed(1)} min` : 'N/A'
-                    ];
-                    tableRows.push(rowData);
-                });
-
-                doc.autoTable({ head: [tableColumn], body: tableRows, startY: 50 });
-                doc.save(`relatorio_culto_${cultInfo.date.replace(/\//g, '-')}.pdf`);
-            };
-            
-            return (
-                <>
-                    <Modal {...modalState} onClose={hideModal} />
-                    <div className="min-h-screen bg-slate-950 p-4 lg:p-8">
-                        <div className="max-w-screen-2xl mx-auto">
-                            <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
-                                <h1 className="text-3xl lg:text-4xl font-bold text-slate-100">Gestor de Culto</h1>
-                                <div className="flex items-center gap-4">
-                                    <LiveClock className="text-xl text-slate-200 bg-slate-800 px-3 py-1 rounded-md" />
-                                    <div className="flex items-center gap-2">
-                                        <button onClick={() => setShowTechnical(!showTechnical)} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-md flex items-center gap-2 text-sm">
-                                            <icons.Monitor size={16} /> <span>Técnico</span>
-                                        </button>
-                                        <button onClick={() => setMode(mode === 'planning' ? 'presentation' : 'planning')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center gap-2">
-                                            {mode === 'planning' ? <icons.Play size={18}/> : <icons.Settings size={18}/>}
-                                            <span>{mode === 'planning' ? 'Modo Ao Vivo' : 'Planejamento'}</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            {mode === 'planning' ? (
-                                <PlanningView {...state} onCultInfoChange={handleCultInfoChange} showTechnical={showTechnical} onAddItem={addItem} onUpdateItem={updateItem} onDeleteItem={deleteItem} onMoveItem={moveItem} onSaveClick={handleSaveClick} onLoadPreset={handleLoadPreset} onDeletePreset={handleDeletePreset} onDownloadTemplate={handleDownloadExcelTemplate} onImportClick={() => fileInputRef.current.click()} onExportPDF={handleExportPDF} presets={presets} selectedPresetId={selectedPresetId} setSelectedPresetId={setSelectedPresetId} loadedPreset={loadedPreset} isDirty={isDirty} />
-                            ) : (
-                                <PresentationView state={state} onStateUpdate={handleStateUpdate} isReadOnly={false} onSwitchToPlanning={() => setMode('planning')} onExportPDF={handleExportPDF} />
-                            )}
-                            <input type="file" accept=".xlsx, .xls" ref={fileInputRef} className="hidden-file-input" onChange={handleImportExcel} />
-                        </div>
-                    </div>
-                </>
-            );
-        };
-
-        const TeamView = ({ state }) => {
-            useEffect(() => {
-                document.body.classList.add('presentation-mode');
-                return () => document.body.classList.remove('presentation-mode');
+                initFb();
             }, []);
 
-            return (
-               <div className="min-h-screen p-4 lg:p-6 text-white">
-                   <AnnouncementBanner announcement={state.liveState.announcement} />
-                   <div className="max-w-screen-2xl mx-auto h-full flex flex-col">
-                       <PresentationView state={state} isReadOnly={true} />
-                   </div>
-               </div>
-            );
-        };
-        
-        const InfoInput = ({ label, ...props }) => ( <div> <label className="block text-sm font-medium text-slate-400 mb-1">{label}</label> <input {...props} className="w-full bg-slate-800 border-slate-700 text-slate-200 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" /> </div> );
+            const sync = async (updater) => {
+                if (!user) return;
+                const { db, utils, appId } = window.FB_INSTANCE;
+                const next = typeof updater === 'function' ? updater(state) : updater;
+                await utils.setDoc(utils.doc(db, "artifacts", appId, "public", "data", "live", "state"), next, { merge: true });
+            };
 
-        const PlanningView = ({ items, cultInfo, onCultInfoChange, showTechnical, onAddItem, onUpdateItem, onDeleteItem, onMoveItem, onSaveClick, onLoadPreset, onDeletePreset, onDownloadTemplate, onImportClick, onExportPDF, presets, selectedPresetId, setSelectedPresetId, loadedPreset, isDirty }) => {
-            const techFields = [ { key: 'projection', label: 'Projeção' }, { key: 'sound', label: 'Som' }, { key: 'microphone', label: 'Microfone' }, { key: 'lighting', label: 'Iluminação' }, { key: 'camera', label: 'Câmera' }, { key: 'staff', label: 'Staff' }, { key: 'transmission', label: 'Transmissão' } ];
-            const saveButtonText = loadedPreset && isDirty ? 'Atualizar ou Salvar...' : 'Salvar Preset';
-            
-            return ( <> <div className="bg-slate-900 rounded-lg p-6 mb-6 shadow-sm border border-slate-800"> <h2 className="text-xl font-semibold mb-4 text-slate-100">Informações do Culto</h2> <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"> <InfoInput label="Data" type="text" value={cultInfo.date} onChange={e => onCultInfoChange('date', e.target.value)} /> <InfoInput label="Coordenador Técnico" value={cultInfo.coordenadorTecnico} onChange={e => onCultInfoChange('coordenadorTecnico', e.target.value)} /> <InfoInput label="Staff" value={cultInfo.staff} onChange={e => onCultInfoChange('staff', e.target.value)} /> <InfoInput label="Lead" value={cultInfo.lead} onChange={e => onCultInfoChange('lead', e.target.value)} /> <InfoInput label="Som" value={cultInfo.som} onChange={e => onCultInfoChange('som', e.target.value)} /> <InfoInput label="Projeção" value={cultInfo.projecao} onChange={e => onCultInfoChange('projecao', e.target.value)} /> <InfoInput label="Iluminação" value={cultInfo.iluminacao} onChange={e => onCultInfoChange('iluminacao', e.target.value)} /> <InfoInput label="Transmissão" value={cultInfo.transmissao} onChange={e => onCultInfoChange('transmissao', e.target.value)} /> <InfoInput label="Pregador" value={cultInfo.pregador} onChange={e => onCultInfoChange('pregador', e.target.value)} /> <InfoInput label="Início do Culto" type="time" value={cultInfo.startTime} onChange={e => onCultInfoChange('startTime', e.target.value)} /> </div> </div> <div className="bg-slate-900 rounded-lg shadow-sm border border-slate-800"> <div className="p-4 border-b border-slate-800 flex flex-wrap justify-between items-center gap-3"> <h2 className="text-xl font-semibold text-slate-100">Ordem de Culto</h2> <div className="flex flex-wrap items-center gap-2"> <button onClick={onImportClick} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.UploadCloud size={16}/> Importar</button> <button onClick={onDownloadTemplate} className="bg-slate-600 hover:bg-slate-500 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.DownloadCloud size={16}/> Modelo</button> <button onClick={onExportPDF} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.FileText size={16}/> Exportar Relatório</button> <button onClick={onSaveClick} className="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.Save size={16}/> {saveButtonText}</button> <div className="flex items-center border border-slate-700 rounded-md"> <select onChange={(e) => setSelectedPresetId(e.target.value)} value={selectedPresetId} className="border-0 rounded-l-md bg-slate-800 text-slate-300 text-sm focus:ring-0"> <option value="">Selecione um Preset</option> {presets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)} </select> <button onClick={() => onLoadPreset(selectedPresetId)} disabled={!selectedPresetId} className="bg-yellow-500 hover:bg-yellow-600 text-black px-3 py-1 flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed">Carregar</button> <button onClick={onDeletePreset} disabled={!selectedPresetId} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-r-md flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"><icons.Trash2 size={16}/></button> </div> <button onClick={onAddItem} className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md flex items-center gap-2 text-sm"><icons.Plus size={16}/> Adicionar Item</button> </div> </div> <div className="divide-y divide-slate-800"> {items && items.map((item, index) => ( <PlanningItem key={item.id} item={item} index={index} isFirst={index === 0} isLast={index === items.length - 1} showTechnical={showTechnical} onUpdate={onUpdateItem} onDelete={onDeleteItem} onMove={onMoveItem} techFields={techFields} /> ))} {(!items || items.length === 0) && <p className="p-4 text-slate-500">Nenhum item na ordem de culto. Adicione um para começar ou importe um arquivo.</p>} </div> </div> </> );
-        };
+            const toggleTimer = () => {
+                if (state.liveState.isRunning) {
+                    const elapsed = state.liveState.itemStartTime ? (Date.now() - state.liveState.itemStartTime) / 1000 : 0;
+                    sync({
+                        ...state,
+                        liveState: { ...state.liveState, isRunning: false, accumulatedTime: state.liveState.accumulatedTime + elapsed, itemStartTime: null }
+                    });
+                } else {
+                    sync({ ...state, liveState: { ...state.liveState, isRunning: true, itemStartTime: Date.now() } });
+                }
+            };
 
-        const PlanningItem = ({ item, index, isFirst, isLast, showTechnical, onUpdate, onDelete, onMove, techFields }) => {
-            const handleFieldChange = (field, value) => onUpdate(item.id, { [field]: value });
-            const handleTechFieldChange = (field, value) => onUpdate(item.id, { technical: { ...item.technical, [field]: value } });
-            const getTypeColor = type => ({'música': 'bg-blue-500/20 text-blue-300', 'oração': 'bg-purple-500/20 text-purple-300', 'palavra': 'bg-green-500/20 text-green-300', 'técnico': 'bg-orange-500/20 text-orange-300'})[type] || 'bg-slate-700 text-slate-300';
-            
-            return (
-                <div className="p-4 hover:bg-slate-800/50">
-                    <div className="flex items-start gap-3">
-                        <div className="flex flex-col items-center pt-1 text-slate-500">
-                            <button onClick={() => onMove(index, -1)} disabled={isFirst} className="disabled:opacity-30 hover:text-slate-300"><icons.ChevronUp size={20} /></button>
-                            <span className="font-mono text-lg font-bold text-slate-600">{index + 1}</span>
-                            <button onClick={() => onMove(index, 1)} disabled={isLast} className="disabled:opacity-30 hover:text-slate-300"><icons.ChevronDown size={20} /></button>
-                        </div>
-                        <div className="flex-1">
-                            <div className="grid grid-cols-1 md:grid-cols-5 gap-x-4 gap-y-2">
-                                <input type="text" value={item.title} onChange={e => handleFieldChange('title', e.target.value)} placeholder="Título" className="md:col-span-2 bg-slate-800 border-slate-700 text-slate-100 rounded-md shadow-sm text-lg font-semibold placeholder:text-slate-500"/>
-                                <input type="text" value={item.responsible} onChange={e => handleFieldChange('responsible', e.target.value)} placeholder="Responsável" className="bg-slate-800 border-slate-700 text-slate-200 rounded-md shadow-sm placeholder:text-slate-500"/>
-                                <select value={item.type} onChange={e => handleFieldChange('type', e.target.value)} className={`border-slate-700 rounded-md shadow-sm font-medium ${getTypeColor(item.type)}`}>
-                                    <option value="palavra">Palavra</option> <option value="música">Música</option> <option value="oração">Oração</option> <option value="técnico">Técnico</option>
-                                </select>
-                                <div className="flex items-center gap-2">
-                                    <input type="number" value={item.duration} onChange={e => handleFieldChange('duration', parseInt(e.target.value, 10) || 0)} className="w-20 bg-slate-800 border-slate-700 text-slate-200 rounded-md shadow-sm"/>
-                                    <span className="text-slate-400">min</span>
-                                    <span className="font-mono text-slate-300 bg-slate-700 px-2 py-1 rounded-md">{item.startTime}</span>
-                                    <input type="color" value={item.itemColor || '#3B82F6'} onChange={e => handleFieldChange('itemColor', e.target.value)} title="Cor do Item" />
-                                </div>
+            const handleNext = () => {
+                if (state.liveState.currentItemIndex >= state.items.length - 1) return;
+                const nextIdx = state.liveState.currentItemIndex + 1;
+                const newItems = state.items.map((it, idx) => idx === state.liveState.currentItemIndex ? { ...it, completed: true } : it);
+                sync({
+                    ...state,
+                    items: newItems,
+                    liveState: { ...state.liveState, currentItemIndex: nextIdx, itemStartTime: Date.now(), accumulatedTime: 0, isRunning: true }
+                });
+            };
+
+            // --- TAB: PLANNING ---
+            const PlanningTab = () => (
+                <div className="max-w-5xl mx-auto space-y-8 animate-fade-in no-print pb-32 pt-4">
+                    <section className="glass p-8 rounded-[2.5rem] border border-white/5 space-y-6">
+                        <h2 className="text-2xl font-black">Informações Básicas</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div>
+                                <label className="text-[10px] font-black text-slate-500 uppercase block mb-1">Título</label>
+                                <input className="w-full bg-slate-900 border border-white/10 rounded-xl p-3 outline-none focus:border-indigo-500 font-bold" value={state.cultInfo.titulo} onChange={e => sync(p => ({...p, cultInfo: {...p.cultInfo, titulo: e.target.value}}))} />
                             </div>
-                            <textarea value={item.description} onChange={e => handleFieldChange('description', e.target.value)} placeholder="Descrição ou detalhes..." className="w-full mt-2 bg-slate-800 border-slate-700 text-slate-200 rounded-md shadow-sm placeholder:text-slate-500" rows="2"></textarea>
-                            {showTechnical && (
-                                <div className="mt-3 bg-slate-800/70 rounded p-3">
-                                    <h4 className="font-semibold text-sm mb-2 text-slate-400">Detalhes Técnicos</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
-                                        {techFields.map(field => (
-                                            <div key={field.key} className="grid grid-cols-[100px_1fr] items-center gap-2">
-                                                <label className="text-sm font-medium text-slate-400 text-right">{field.label}:</label>
-                                                <input type="text" placeholder="Instruções..." value={item.technical?.[field.key] || ''} onChange={e => handleTechFieldChange(field.key, e.target.value)} className="w-full bg-slate-700 border-slate-600 text-slate-200 rounded-md shadow-sm sm:text-sm placeholder:text-slate-500" />
-                                            </div>
-                                        ))}
+                            <div>
+                                <label className="text-[10px] font-black text-slate-500 uppercase block mb-1">Início</label>
+                                <input type="time" className="w-full bg-slate-900 border border-white/10 rounded-xl p-3 outline-none focus:border-indigo-500 font-mono text-indigo-400 font-bold" value={state.cultInfo.startTime} onChange={e => sync(p => ({...p, cultInfo: {...p.cultInfo, startTime: e.target.value}}))} />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-slate-500 uppercase block mb-1">Local</label>
+                                <input className="w-full bg-slate-900 border border-white/10 rounded-xl p-3" value={state.cultInfo.local} onChange={e => sync(p => ({...p, cultInfo: {...p.cultInfo, local: e.target.value}}))} />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-slate-500 uppercase block mb-1">Data</label>
+                                <input type="date" className="w-full bg-slate-900 border border-white/10 rounded-xl p-3" value={state.cultInfo.date} onChange={e => sync(p => ({...p, cultInfo: {...p.cultInfo, date: e.target.value}}))} />
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className="glass p-8 rounded-[2.5rem] border border-white/5">
+                        <div className="flex justify-between items-center mb-8">
+                            <h2 className="text-2xl font-black uppercase tracking-tighter">Liturgia</h2>
+                            <button onClick={() => {
+                                const newItem = { id: crypto.randomUUID(), title: 'Novo Momento', duration: 10, responsible: '', description: '', technical: { projection: '', sound: '', lighting: '' }, completed: false, itemColor: '#3B82F6' };
+                                sync(p => ({...p, items: [...p.items, newItem]}));
+                            }} className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold text-xs uppercase flex items-center gap-2 hover:bg-indigo-50 transition-all shadow-lg">
+                                <icons.Plus size={16}/> Adicionar Item
+                            </button>
+                        </div>
+                        <div className="space-y-4">
+                            {calculateTimes(state.items, state.cultInfo.startTime).map((it) => (
+                                <div key={it.id} className="p-6 bg-slate-950/40 rounded-3xl border border-white/5 group">
+                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                                        <div className="md:col-span-1 text-center">
+                                            <span className="font-mono font-bold text-indigo-500 text-sm">{it.startTime}</span>
+                                            <input type="color" className="mt-1 block mx-auto" value={it.itemColor} onChange={e => sync(p => ({...p, items: p.items.map(x => x.id === it.id ? {...x, itemColor: e.target.value} : x)}))} />
+                                        </div>
+                                        <div className="md:col-span-4">
+                                            <input className="bg-transparent text-xl font-black outline-none w-full text-slate-100 placeholder:text-slate-800" placeholder="Título" value={it.title} onChange={e => sync(p => ({...p, items: p.items.map(x => x.id === it.id ? {...x, title: e.target.value} : x)}))} />
+                                            <input className="bg-transparent text-[10px] font-black text-slate-600 outline-none uppercase block mt-1 tracking-widest" placeholder="RESPONSÁVEL" value={it.responsible} onChange={e => sync(p => ({...p, items: p.items.map(x => x.id === it.id ? {...x, responsible: e.target.value} : x)}))} />
+                                        </div>
+                                        <div className="md:col-span-1 flex items-center gap-2 bg-black/40 p-2 rounded-xl border border-white/5 justify-center">
+                                            <input type="number" className="bg-transparent w-8 text-center font-bold text-sm" value={it.duration} onChange={e => sync(p => ({...p, items: p.items.map(x => x.id === it.id ? {...x, duration: Number(e.target.value)} : x)}))} />
+                                            <span className="text-[9px] font-black text-slate-600 uppercase">min</span>
+                                        </div>
+                                        <div className="md:col-span-5 grid grid-cols-3 gap-2">
+                                            {['projection', 'sound', 'lighting'].map(tk => (
+                                                <input key={tk} placeholder={tk.toUpperCase()} className="bg-white/5 border border-white/10 rounded-lg p-2 text-[10px] outline-none text-slate-300 font-bold" value={it.technical[tk]} onChange={e => sync(p => ({...p, items: p.items.map(x => x.id === it.id ? {...x, technical: {...x.technical, [tk]: e.target.value}} : x)}))} />
+                                            ))}
+                                        </div>
+                                        <div className="md:col-span-1 text-right">
+                                            <button onClick={() => sync(p => ({...p, items: p.items.filter(x => x.id !== it.id)}))} className="text-slate-700 hover:text-red-500">
+                                                <icons.Trash2 size={20}/>
+                                            </button>
+                                        </div>
                                     </div>
+                                    <textarea className="w-full bg-black/20 mt-4 rounded-xl p-3 text-xs text-slate-500 outline-none resize-none italic" placeholder="Setlist ou observações..." value={it.description} onChange={e => sync(p => ({...p, items: p.items.map(x => x.id === it.id ? {...x, description: e.target.value} : x)}))} />
                                 </div>
-                            )}
+                            ))}
                         </div>
-                        <div className="flex flex-col items-center pt-1">
-                            <button onClick={() => onDelete(item.id)} className="text-slate-500 hover:text-red-500 p-1"><icons.Trash2 size={18} /></button>
-                        </div>
+                    </section>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <section className="glass p-8 rounded-[2.5rem] border border-white/5">
+                            <h2 className="text-2xl font-black mb-8 uppercase tracking-tighter">Escala de Equipes</h2>
+                            <div className="space-y-4">
+                                {Object.keys(state.equipes).map(role => (
+                                    <div key={role} className="flex flex-col">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-widest">{role}</label>
+                                        <input className="bg-slate-900 border border-white/10 rounded-xl p-3 text-sm focus:border-indigo-500 outline-none text-slate-200" value={state.equipes[role]} onChange={e => sync(p => ({...p, equipes: {...p.equipes, [role]: e.target.value}}))} />
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                        <section className="glass p-8 rounded-[2.5rem] border border-white/5 text-white">
+                            <h2 className="text-2xl font-black mb-8 uppercase tracking-tighter">Notas Departamentais</h2>
+                            <div className="space-y-6">
+                                {[
+                                    {id: 'midia', l: 'Mídia', c: 'text-orange-500'},
+                                    {id: 'musica', l: 'Música', c: 'text-blue-500'},
+                                    {id: 'staff', l: 'Staff', c: 'text-green-500'},
+                                    {id: 'diaconato', l: 'Diaconato / Púlpito', c: 'text-purple-500'}
+                                ].map(dept => (
+                                    <div key={dept.id}>
+                                        <label className={`text-[10px] font-black uppercase tracking-widest block mb-2 ${dept.c}`}>{dept.l}</label>
+                                        <textarea rows="3" className="w-full bg-slate-900 border border-white/10 rounded-xl p-3 text-xs outline-none focus:border-indigo-500 resize-none text-slate-300 font-medium" value={state.obsDepartamentos[dept.id]} onChange={e => sync(p => ({...p, obsDepartamentos: {...p.obsDepartamentos, [dept.id]: e.target.value}}))} />
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
                     </div>
                 </div>
             );
-        };
-        
-        const PresentationView = ({ state, onStateUpdate, isReadOnly, onSwitchToPlanning, onExportPDF }) => {
-            const [elapsedTime, setElapsedTime] = useState(0);
-            const { items, cultInfo, liveState } = state;
-            const { currentItemIndex, isRunning, itemStartTime, accumulatedTime, actualStartTime } = liveState;
-            const currentItem = items && items[currentItemIndex];
-            const nextItem = items && items[currentItemIndex + 1];
-            const [announcementText, setAnnouncementText] = useState("");
-            const [announcementDuration, setAnnouncementDuration] = useState(10);
-            const { modalState, showModal, hideModal } = useModal();
-            const [estimatedEndTime, setEstimatedEndTime] = useState('--:--');
-            const timelineItemRefs = useRef({});
 
-            const techDetailsMap = {
-                projection: { label: 'Projeção', icon: <icons.Monitor size={20} className="text-slate-400"/> },
-                sound: { label: 'Som', icon: <icons.Sound size={20} className="text-slate-400"/> },
-                microphone: { label: 'Microfone', icon: <icons.Mic size={20} className="text-slate-400"/> },
-                lighting: { label: 'Iluminação', icon: <icons.Lightbulb size={20} className="text-slate-400"/> },
-                camera: { label: 'Câmera', icon: <icons.Camera size={20} className="text-slate-400"/> },
-                staff: { label: 'Staff', icon: <icons.Users size={20} className="text-slate-400"/> },
-                transmission: { label: 'Transmissão', icon: <icons.Video size={20} className="text-slate-400"/> }
-            };
+            // --- TAB: LIVE (IMERSIVO - REQUESTED FORMAT) ---
+            const LiveTab = () => {
+                const it = state.items[state.liveState.currentItemIndex];
+                const next = state.items[state.liveState.currentItemIndex + 1];
+                const [elapsed, setElapsed] = useState(state.liveState.accumulatedTime);
 
-            const plannedDurationInSeconds = useMemo(() => (currentItem?.duration || 0) * 60, [currentItem]);
-
-            useEffect(() => {
-                let interval;
-                if (isRunning) {
-                    interval = setInterval(() => {
-                        const elapsed = itemStartTime ? (Date.now() - itemStartTime) / 1000 : 0;
-                        setElapsedTime(accumulatedTime + elapsed);
-                    }, 250);
-                } else {
-                    setElapsedTime(accumulatedTime);
-                }
-                return () => clearInterval(interval);
-            }, [isRunning, itemStartTime, accumulatedTime]);
-            
-            useEffect(() => {
-                const calculateEndTime = () => {
-                    if (!items || items.length === 0 || currentItemIndex >= items.length || !currentItem) return;
-                    
-                    const remainingItemsDuration = items
-                        .slice(currentItemIndex + 1)
-                        .reduce((acc, item) => acc + (item.duration || 0) * 60, 0);
-
-                    const currentItemRemaining = Math.max(0, plannedDurationInSeconds - elapsedTime);
-                    const totalRemainingSeconds = currentItemRemaining + remainingItemsDuration;
-                    
-                    if (isFinite(totalRemainingSeconds)) {
-                        const estimatedEnd = new Date(Date.now() + totalRemainingSeconds * 1000);
-                        setEstimatedEndTime(estimatedEnd.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+                useEffect(() => {
+                    if (!state.liveState.isRunning || !state.liveState.itemStartTime) {
+                        setElapsed(state.liveState.accumulatedTime);
+                        return;
                     }
-                };
-
-                const interval = setInterval(calculateEndTime, 5000);
-                calculateEndTime();
-
-                return () => clearInterval(interval);
-            }, [items, currentItemIndex, elapsedTime, isRunning, plannedDurationInSeconds, currentItem]);
-            
-            useEffect(() => {
-                if (currentItem && timelineItemRefs.current[currentItem.id]) {
-                    timelineItemRefs.current[currentItem.id].scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'nearest',
-                        inline: 'center'
-                    });
-                }
-            }, [currentItemIndex, currentItem]);
-
-            const formatTime = (seconds) => {
-                if (typeof seconds !== 'number' || !isFinite(seconds)) seconds = 0;
-                const absSeconds = Math.abs(seconds);
-                const mins = Math.floor(absSeconds / 60);
-                const secs = Math.floor(absSeconds % 60);
-                return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-            };
-            
-            const remainingTime = plannedDurationInSeconds - elapsedTime;
-            
-            const balance = useMemo(() => {
-                if (!items) return 0;
-                let initialDelayInMinutes = 0;
-                if (actualStartTime && cultInfo.startTime) {
-                    const plannedStart = new Date(`1970-01-01T${cultInfo.startTime}:00`);
-                    const actualStart = new Date(actualStartTime);
-                    const actualStartOnSameDay = new Date(`1970-01-01T${actualStart.toTimeString().slice(0,8)}`);
-                    if (!isNaN(plannedStart) && !isNaN(actualStartOnSameDay)) {
-                        initialDelayInMinutes = (actualStartOnSameDay - plannedStart) / (1000 * 60);
-                    }
-                }
-                const itemsBalance = items.slice(0, currentItemIndex).reduce((acc, item) => {
-                    if (!item.completed || item.actualDuration === null) return acc;
-                    const planned = item.duration || 0;
-                    const actual = item.actualDuration / 60;
-                    return acc + (planned - actual);
-                }, 0);
-                return itemsBalance - initialDelayInMinutes;
-            }, [items, currentItemIndex, actualStartTime, cultInfo.startTime]);
-            
-            const getTimerColor = () => {
-                if (plannedDurationInSeconds <= 0) return 'text-emerald-400';
-                if (remainingTime < 0) return 'text-red-400';
-                const percentageLeft = (remainingTime / plannedDurationInSeconds);
-                if (percentageLeft <= 0.10) return 'text-orange-400';
-                if (percentageLeft <= 0.25) return 'text-yellow-400';
-                return 'text-emerald-400';
-            };
-            
-            const progressPercentage = plannedDurationInSeconds > 0 ? Math.max(0, (elapsedTime / plannedDurationInSeconds) * 100) : 0;
-            
-            const handleToggleTimer = () => { onStateUpdate(prevState => { const { liveState, items } = prevState; const now = Date.now(); if (liveState.isRunning) { const elapsed = liveState.itemStartTime ? (now - liveState.itemStartTime) / 1000 : 0; return { ...prevState, liveState: { ...liveState, isRunning: false, accumulatedTime: liveState.accumulatedTime + elapsed, itemStartTime: null } }; } else { const newItems = items.map((item, index) => index === liveState.currentItemIndex ? { ...item, actualStartTime: item.actualStartTime || new Date().toISOString() } : item); return { ...prevState, items: newItems, liveState: { ...liveState, isRunning: true, itemStartTime: now, actualStartTime: liveState.actualStartTime || new Date().toISOString() } }; } }); };
-            const handleResetTimer = () => { onStateUpdate(prevState => ({ ...prevState, liveState: { ...prevState.liveState, isRunning: false, itemStartTime: null, accumulatedTime: 0 } })); };
-            const handleNext = () => { if (!items || currentItemIndex >= items.length - 1) return; onStateUpdate(prevState => { const { items, liveState } = prevState; const now = new Date().toISOString(); const elapsed = liveState.isRunning && liveState.itemStartTime ? (Date.now() - liveState.itemStartTime) / 1000 : 0; const finalDuration = liveState.accumulatedTime + elapsed; const newItems = items.map((item, index) => { if (index === liveState.currentItemIndex) { return { ...item, completed: true, actualDuration: finalDuration, actualEndTime: now }; } if (index === liveState.currentItemIndex + 1) { return { ...item, actualStartTime: now }; } return item; }); return { ...prevState, items: newItems, liveState: { ...liveState, currentItemIndex: liveState.currentItemIndex + 1, isRunning: true, itemStartTime: Date.now(), accumulatedTime: 0 } }; }); };
-            const handlePrevious = () => { if (currentItemIndex <= 0) return; onStateUpdate(prevState => { const newItems = prevState.items.map((item, index) => { if (index === prevState.liveState.currentItemIndex - 1) { return { ...item, completed: false, actualDuration: null, actualStartTime: null, actualEndTime: null }; } return item; }); return { ...prevState, items: newItems, liveState: { ...prevState.liveState, currentItemIndex: prevState.liveState.currentItemIndex - 1, isRunning: false, itemStartTime: null, accumulatedTime: 0 } }; }); };
-            const handleResetWorship = () => {
-                showModal({
-                    title: "Reiniciar Culto",
-                    children: <p>Tem certeza que deseja reiniciar o culto? Todo o progresso será perdido.</p>,
-                    footer: <> <button onClick={hideModal} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-md">Cancelar</button> <button onClick={() => { onStateUpdate(prevState => { const resetItems = prevState.items.map(item => ({ ...item, completed: false, actualDuration: null, actualStartTime: null, actualEndTime: null })); return { ...prevState, items: resetItems, liveState: { currentItemIndex: 0, isRunning: false, itemStartTime: null, accumulatedTime: 0, actualStartTime: null, announcement: null } }; }); hideModal(); }} className="px-4 py-2 bg-blue-600 text-white rounded-md">Reiniciar</button> </>
-                });
-            };
-            const handleSendAnnouncement = () => { if (!announcementText.trim()) return; onStateUpdate(prevState => ({ ...prevState, liveState: { ...prevState.liveState, announcement: { message: announcementText, duration: announcementDuration, timestamp: new Date().toISOString() } } })); setAnnouncementText(""); };
-            const handleEndWorship = () => {
-                showModal({
-                    title: "Encerrar Culto",
-                    children: <p>Tem certeza que deseja encerrar o culto?</p>,
-                    footer: <> <button onClick={hideModal} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-md">Cancelar</button> <button onClick={() => { onStateUpdate(prevState => { const { items, liveState } = prevState; const now = Date.now(); const elapsed = liveState.isRunning && liveState.itemStartTime ? (now - liveState.itemStartTime) / 1000 : 0; const finalDuration = liveState.accumulatedTime + elapsed; const newItems = items.map((item, index) => index === liveState.currentItemIndex ? { ...item, completed: true, actualDuration: finalDuration, actualEndTime: new Date().toISOString() } : item); return { ...prevState, items: newItems, liveState: { ...liveState, currentItemIndex: items.length, isRunning: false } }; }); hideModal(); }} className="px-4 py-2 bg-red-600 text-white rounded-md">Encerrar</button> </>
-                });
-            };
-
-            if (!currentItem) {
-                return (
-                    <>
-                        <Modal {...modalState} onClose={hideModal} />
-                        <div className="text-center p-10 bg-slate-950 text-white rounded-lg shadow-md flex flex-col items-center justify-center h-full">
-                            <h2 className="text-2xl font-bold mb-6">Culto Finalizado.</h2>
-                            {!isReadOnly && (
-                                <div className="flex justify-center items-center gap-4">
-                                    <button onClick={onExportPDF} className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700"> <icons.FileText size={18}/> Exportar Relatório </button>
-                                    <button onClick={handleResetWorship} className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"> <icons.RotateCcw size={18}/> Reiniciar Culto </button>
-                                    <button onClick={onSwitchToPlanning} className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-slate-600 hover:bg-slate-700"> <icons.Settings size={18}/> Voltar ao Planejamento </button>
-                                </div>
-                            )}
-                        </div>
-                    </>
-                )
-            }
-            
-            const currentTechInstructions = Object.entries(techDetailsMap).filter(([key]) => currentItem.technical?.[key] && currentItem.technical[key] !== '-');
-            const nextTechInstructions = nextItem ? Object.entries(techDetailsMap).filter(([key]) => nextItem.technical?.[key] && nextItem.technical[key] !== '-') : [];
-
-
-            return (
-                <>
-                    <Modal {...modalState} onClose={hideModal} />
-                    <div className="flex flex-col h-full bg-slate-950">
-                        <div className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            
-                            <div className="bg-slate-900 text-slate-200 p-6 rounded-xl flex flex-col shadow-lg border border-slate-800">
-                                <div className="flex justify-between items-center">
-                                    <span className="bg-emerald-500/10 text-emerald-400 text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full">AO VIVO</span>
-                                    <LiveClock className="text-lg text-slate-300" />
-                                </div>
-                                <div className="flex flex-col items-center justify-center flex-grow my-4">
-                                    <h2 className="text-3xl lg:text-4xl font-black text-center text-white">{currentItem.title}</h2>
-                                    
-                                    <div className="relative w-64 h-64 my-4 flex items-center justify-center">
-                                        <CircularProgressBar size={256} strokeWidth={12} percentage={100 - progressPercentage} color={getTimerColor()} />
-                                        <div className={`absolute text-6xl lg:text-7xl font-mono font-bold ${getTimerColor()}`}>
-                                            {remainingTime >= 0 ? formatTime(remainingTime) : `-${formatTime(remainingTime)}`}
-                                        </div>
-                                    </div>
-
-                                    <div className="text-slate-400 lg:text-lg">Planejado: {formatTime(plannedDurationInSeconds)}</div>
-                                </div>
-                                 {currentItem.description && (
-                                    <div className="mt-auto border-t border-slate-700 pt-3">
-                                        <h4 className="font-semibold text-slate-400 text-sm">Descrição</h4>
-                                        <p className="text-sm text-slate-300 whitespace-pre-wrap">{currentItem.description}</p>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="bg-slate-900 text-slate-200 p-6 rounded-xl shadow-lg border border-slate-800 flex flex-col">
-                                <div className="flex items-center gap-4 mb-4">
-                                    <h3 className="text-2xl font-bold text-white">Instruções da Equipe</h3>
-                                    <div style={{ backgroundColor: currentItem.itemColor || '#3B82F6' }} className="w-6 h-6 rounded-full ml-auto flex-shrink-0 border-2 border-slate-500"></div>
-                                </div>
-                                {currentTechInstructions.length > 0 ? (
-                                    <ul className="space-y-3 overflow-y-auto">
-                                        {currentTechInstructions.map(([key, { label, icon }]) => (
-                                            <li key={key} className="flex items-start gap-4 p-3 bg-slate-800 rounded-lg">
-                                                {icon}
-                                                <div className="flex-1">
-                                                    <div className="text-slate-400 text-sm">{label}</div>
-                                                    <div className="font-semibold text-lg text-white">{currentItem.technical?.[key]}</div>
-                                                </div>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                ) : (
-                                    <div className="flex-grow flex items-center justify-center text-slate-500">Nenhuma instrução para este momento.</div>
-                                )}
-                            </div>
-
-                            <div className="flex flex-col gap-6">
-                                <div className="bg-slate-900 text-slate-200 p-6 rounded-xl shadow-lg border border-amber-400/20 flex flex-col flex-grow">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <span className="bg-amber-500/10 text-amber-400 text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full">A SEGUIR</span>
-                                        {nextItem && <div style={{ backgroundColor: nextItem.itemColor || '#3B82F6' }} className="w-6 h-6 rounded-full flex-shrink-0 border-2 border-slate-500"></div>}
-                                    </div>
-                                    {nextItem ? (
-                                        <div className="flex flex-col flex-grow">
-                                            <h3 className="text-3xl font-bold text-amber-400">{nextItem.title}</h3>
-                                            <p className="text-slate-400 mt-1">{nextItem.responsible}</p>
-                                            
-                                            {nextTechInstructions.length > 0 && (
-                                                <div className="mt-4 border-t border-slate-700 pt-3">
-                                                    <h4 className="font-semibold text-amber-400/80 text-sm mb-2">Instruções</h4>
-                                                    <ul className="space-y-2 text-sm">
-                                                        {nextTechInstructions.map(([key, { label }]) => (
-                                                           <li key={key} className="flex justify-between items-center">
-                                                               <span className="text-slate-400">{label}:</span>
-                                                               <span className="font-medium text-slate-200 text-right">{nextItem.technical?.[key]}</span>
-                                                           </li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <div className="flex-grow flex items-center justify-center text-slate-400 text-lg">Fim da ordem de culto.</div>
-                                    )}
-                                </div>
-                                 <div className="bg-slate-900 text-slate-200 p-6 rounded-xl shadow-lg border border-slate-800">
-                                    <h3 className="text-2xl font-bold mb-4 text-white">Status Geral</h3>
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between items-center text-lg">
-                                            <span className="text-slate-400">Balanço do Tempo:</span>
-                                            <span className={`font-semibold px-3 py-1 rounded-full text-base ${balance >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>{balance >= 0 ? '+' : ''}{Math.round(balance)} min</span>
-                                        </div>
-                                         <div className="flex justify-between items-center text-lg">
-                                            <span className="text-slate-400">Término Previsto:</span>
-                                            <span className="font-semibold font-mono px-3 py-1 rounded-full bg-slate-700 text-slate-200">{estimatedEndTime}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="mt-6">
-                            {!isReadOnly && ( 
-                                <div className="bg-slate-900 p-3 rounded-xl mb-4 shadow-md border border-slate-800">
-                                    <div className="flex justify-center flex-wrap gap-2 md:gap-3">
-                                        <button onClick={handlePrevious} className="px-4 py-2 rounded-lg text-slate-200 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 font-semibold" disabled={currentItemIndex === 0}>Anterior</button>
-                                        <button onClick={handleToggleTimer} className={`px-5 py-2 rounded-lg flex items-center gap-2 text-lg text-white font-bold ${isRunning ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}> {isRunning ? <icons.Pause size={20}/> : <icons.Play size={20}/>} {isRunning ? 'Pausar' : 'Iniciar'} </button>
-                                        <button onClick={handleResetTimer} className="px-4 py-2 rounded-lg text-slate-200 bg-slate-700 hover:bg-slate-600 flex items-center gap-2 font-semibold"><icons.RotateCcw size={18}/> Resetar</button>
-                                        {currentItemIndex < items.length - 1 ? (<button onClick={handleNext} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-semibold">Próximo</button>) : (<button onClick={handleEndWorship} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-semibold"> <icons.CheckCircle size={18}/> Encerrar</button>)}
-                                        <button onClick={handleResetWorship} className="bg-red-800 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-semibold"><icons.Power size={18}/> Reiniciar</button>
-                                    </div>
-                                </div>
-                            )}
-                            
-                            {!isReadOnly && (
-                                <div className="bg-slate-900 rounded-xl p-3 shadow-md mb-6 border border-slate-800">
-                                    <div className="flex flex-wrap gap-2 items-center">
-                                        <h3 className="font-semibold text-sm text-slate-300 mr-2">Aviso Rápido:</h3>
-                                        <input type="text" value={announcementText} onChange={e => setAnnouncementText(e.target.value)} placeholder="Mensagem para a equipe..." className="flex-grow bg-slate-800 border-slate-700 text-slate-200 rounded-lg shadow-sm" />
-                                        <div className="flex items-center gap-2">
-                                            <input type="number" value={announcementDuration} onChange={e => setAnnouncementDuration(parseInt(e.target.value, 10) || 5)} className="w-16 bg-slate-800 border-slate-700 text-slate-200 rounded-lg shadow-sm" />
-                                            <span className="text-sm text-slate-400">segundos</span>
-                                        </div>
-                                        <button onClick={handleSendAnnouncement} className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-semibold"> <icons.Send size={16} /> Enviar </button>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="bg-slate-900 rounded-xl p-4 border border-slate-800">
-                                <div className="flex justify-between items-center mb-3 text-white">
-                                    <h3 className="font-semibold text-lg">Linha do Tempo</h3>
-                                </div>
-                                <div className="flex overflow-x-auto gap-3 pb-2 timeline-container"> {items && items.map((item, index) => { 
-                                    const isCurrent = index === currentItemIndex;
-                                    const isNext = index === currentItemIndex + 1;
-                                    const isCompleted = item.completed;
-                                    
-                                    let itemClasses = "border-2 transition-all duration-300 text-white ";
-                                    if (isCurrent) {
-                                        itemClasses += 'bg-emerald-500 border-emerald-400';
-                                    } else if (isNext) {
-                                        itemClasses += 'bg-slate-700 border-amber-400';
-                                    } else {
-                                        itemClasses += 'bg-slate-800 border-transparent';
-                                    }
-                                    if(isCompleted) {
-                                        itemClasses += ' opacity-50';
-                                    }
-
-                                    return ( 
-                                        <div key={item.id} ref={el => timelineItemRefs.current[item.id] = el} className={`flex-shrink-0 w-48 p-3 rounded-lg shadow-md ${itemClasses}`}>
-                                            <div className={`flex justify-between items-start text-xs ${isCurrent ? 'text-white/80' : 'text-slate-400'}`}>
-                                                <span className={`font-mono`}>{item.startTime}</span> 
-                                                {item.completed && <icons.CheckCircle size={16} className={`${isCurrent ? 'text-white' : 'text-emerald-400'}`}/>} 
-                                            </div>
-                                            <h4 className={`font-semibold text-sm mt-1 ${isCompleted && !isCurrent ? 'line-through' : ''}`}>{item.title}</h4>
-                                            <div className={`text-xs flex items-center gap-1 mt-1 ${isCurrent ? 'text-white/80' : 'text-slate-400'}`}>
-                                                <icons.Clock size={12} /> {item.duration} min
-                                            </div>
-                                        </div> 
-                                    );
-                                })} </div>
-                            </div>
-                        </div>
-                    </div>
-                </>
-            );
-        };
-        
-        const StageView = ({ state }) => {
-            const { items, cultInfo, liveState } = state;
-            const { currentItemIndex, isRunning, itemStartTime, accumulatedTime } = liveState;
-            const currentItem = items && items[currentItemIndex];
-            const nextItem = items && items[currentItemIndex + 1];
-            const [elapsedTime, setElapsedTime] = useState(0);
-
-            useEffect(() => {
-                document.body.classList.add('presentation-mode');
-                return () => document.body.classList.remove('presentation-mode');
-            }, []);
-
-            const plannedDurationInSeconds = useMemo(() => (currentItem?.duration || 0) * 60, [currentItem]);
-
-            useEffect(() => {
-                let interval;
-                if (isRunning) {
-                    interval = setInterval(() => {
-                        const elapsed = itemStartTime ? (Date.now() - itemStartTime) / 1000 : 0;
-                        setElapsedTime(accumulatedTime + elapsed);
+                    const i = setInterval(() => {
+                        setElapsed(state.liveState.accumulatedTime + (Date.now() - state.liveState.itemStartTime) / 1000);
                     }, 250);
-                } else {
-                    setElapsedTime(accumulatedTime);
-                }
-                return () => clearInterval(interval);
-            }, [isRunning, itemStartTime, accumulatedTime]);
+                    return () => clearInterval(i);
+                }, [state.liveState]);
 
-            const formatTime = (seconds) => {
-                if (typeof seconds !== 'number' || !isFinite(seconds)) seconds = 0;
-                const absSeconds = Math.abs(seconds);
-                const mins = Math.floor(absSeconds / 60);
-                const secs = Math.floor(absSeconds % 60);
-                return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-            };
+                const remaining = (it?.duration * 60) - elapsed;
 
-            const remainingTime = plannedDurationInSeconds - elapsedTime;
-
-            const getTimerColor = () => {
-                if (plannedDurationInSeconds <= 0) return 'text-emerald-400';
-                if (remainingTime < 0) return 'text-red-400';
-                const percentageLeft = (remainingTime / plannedDurationInSeconds);
-                if (percentageLeft <= 0.1) return 'text-orange-400';
-                if (percentageLeft <= 0.25) return 'text-yellow-400';
-                return 'text-white';
-            };
-
-            if (!currentItem) {
                 return (
-                    <div className="bg-black flex justify-center items-center h-screen text-white">
-                        <h2 className="text-6xl font-bold">Obrigado!</h2>
-                    </div>
-                );
-            }
-
-            return (
-                <div className="bg-black text-white min-h-screen flex flex-col p-8 lg:p-16">
-                    <div className="w-full flex justify-between items-start">
-                        <div>
-                            <div className="text-4xl text-slate-400 font-medium">AGORA</div>
-                            <div className="text-7xl font-bold" style={{color: currentItem.itemColor || '#FFFFFF'}}>{currentItem.title}</div>
-                        </div>
-                        <LiveClock className="text-7xl text-slate-300 font-mono" />
-                    </div>
-
-                    <div className="flex-grow flex items-center justify-center">
-                        <div className={`text-[25vw] leading-none font-mono font-bold ${getTimerColor()}`}>
-                            {remainingTime >= 0 ? formatTime(remainingTime) : `-${formatTime(remainingTime)}`}
-                        </div>
-                    </div>
-                    
-                    <div className="w-full text-left">
-                        {nextItem ? (
-                             <div>
-                                <div className="text-4xl text-amber-500/80 font-medium">A SEGUIR</div>
-                                <div className="text-7xl font-bold text-amber-400">{nextItem.title}</div>
+                    <div className="h-full w-full fixed inset-0 z-0 live-bg text-white flex flex-col p-8 lg:p-16 animate-fade-in no-print pt-24 overflow-hidden select-none">
+                        {/* Header Superior */}
+                        <div className="w-full flex justify-between items-start shrink-0">
+                            <div className="max-w-[70%]">
+                                <div className="agora-label uppercase tracking-widest">AGORA</div>
+                                <div className="text-8xl font-black mt-2 tracking-tighter truncate" style={{color: it?.itemColor || '#FFFFFF'}}>{it?.title || 'FIM'}</div>
+                                <div className="text-3xl text-slate-400 font-medium italic mt-4 truncate">{it?.responsible}</div>
                             </div>
-                        ) : (
-                            <div className="text-4xl text-slate-500 font-medium">Fim do culto</div>
+                            <LiveClock className="text-8xl text-slate-400 font-mono font-bold" />
+                        </div>
+
+                        {/* Cronômetro Gigante Centralizado */}
+                        <div className="flex-grow flex flex-col items-center justify-center relative min-h-0">
+                            <div className={`timer-giant ${remaining < 0 ? 'text-red-500' : remaining < 60 ? 'text-yellow-400' : 'text-white'}`}>
+                                {formatTime(remaining)}
+                            </div>
+                            
+                            {/* Instruções Técnicas na Lateral Direita */}
+                            <div className="absolute right-0 top-1/2 -translate-y-1/2 space-y-6 max-w-xs text-right hidden lg:flex flex-col">
+                                {['projection', 'sound', 'lighting'].map(tk => it?.technical[tk] && (
+                                    <div key={tk} className="bg-white/5 border-r-4 border-indigo-500 p-5 backdrop-blur-md rounded-l-3xl shadow-2xl transition-all">
+                                        <div className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">{tk === 'projection' ? 'PROJEÇÃO' : tk.toUpperCase()}</div>
+                                        <div className="text-2xl font-bold text-slate-100 leading-tight">{it.technical[tk]}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Footer - A Seguir + Controlos */}
+                        <div className="w-full flex justify-between items-end border-t border-white/10 pt-8 pb-4 shrink-0">
+                            <div className="text-left flex-1 max-w-[65%]">
+                                <div className="a-seguir-label uppercase tracking-widest">A SEGUIR</div>
+                                {next ? (
+                                    <>
+                                        <div className="text-7xl font-bold text-amber-400 tracking-tighter mt-2 truncate">{next.title}</div>
+                                        <div className="text-2xl text-slate-500 font-medium mt-1 truncate">{next.responsible}</div>
+                                    </>
+                                ) : <div className="text-5xl text-slate-700 font-black mt-2 uppercase tracking-widest italic tracking-tighter">Agenda Finalizada</div>}
+                            </div>
+                            
+                            {/* Controlos Ao Vivo */}
+                            <div className="flex gap-6 pb-2">
+                                <button onClick={toggleTimer} title="Play/Pause" className={`p-8 rounded-[2.5rem] transition-all shadow-2xl ${state.liveState.isRunning ? 'bg-amber-600' : 'bg-emerald-600'} hover:scale-110 active:scale-90`}>
+                                    {state.liveState.isRunning ? <icons.Pause size={48}/> : <icons.Play size={48}/>}
+                                </button>
+                                <button onClick={handleNext} title="Próximo Bloco" className="p-8 bg-indigo-600 rounded-[2.5rem] hover:bg-indigo-500 transition-all shadow-2xl hover:scale-110 active:scale-90 text-white">
+                                    <icons.Skip size={48}/>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Notas no Centro Inferior */}
+                        {it?.description && (
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 glass px-12 py-3 rounded-full border border-white/10 animate-pulse-soft max-w-3xl z-50">
+                                <p className="text-slate-300 text-lg font-bold italic text-center truncate">"{it.description}"</p>
+                            </div>
                         )}
                     </div>
+                );
+            };
+
+            const RoteiroTab = () => (
+                <div className="animate-fade-in pb-32 pt-4">
+                    <div className="paper-view text-slate-900">
+                        <div className="flex justify-between items-start border-b-4 border-slate-900 pb-6 mb-8">
+                            <div className="flex-1 text-slate-900">
+                                <h1 className="text-4xl font-serif font-bold uppercase tracking-tight leading-tight">{state.cultInfo.titulo}</h1>
+                                <p className="text-xl text-slate-600 italic font-serif mt-1">{state.cultInfo.tema}</p>
+                            </div>
+                            <div className="text-right">
+                                <div className="bg-slate-900 text-white px-4 py-1 mb-2 font-bold uppercase tracking-widest text-[10px] inline-block font-sans">Briefing Pro</div>
+                                <div className="text-xl font-bold font-mono">{new Date(state.cultInfo.date + 'T00:00:00').toLocaleDateString('pt-BR')}</div>
+                                <div className="text-lg text-slate-500 font-mono">{state.cultInfo.startTime}h • {state.cultInfo.local || 'Auditório'}</div>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-12 gap-8 mb-10 text-slate-900">
+                            <div className="col-span-4 space-y-6">
+                                <section>
+                                    <h3 className="font-black uppercase text-[10px] text-slate-400 mb-3 border-b border-slate-100 pb-1">Escala Técnica</h3>
+                                    <div className="space-y-1 text-sm">
+                                        {Object.entries(state.equipes).map(([k, v]) => (
+                                            <p key={k}><strong className="capitalize text-slate-400 text-[10px] uppercase">{k}:</strong> {v || '-'}</p>
+                                        ))}
+                                    </div>
+                                </section>
+                                <section>
+                                    <h3 className="font-black uppercase text-[10px] text-slate-400 mb-3 border-b border-slate-100 pb-1 tracking-widest">Responsáveis</h3>
+                                    <div className="space-y-1 text-sm">
+                                        <p><strong className="text-slate-400 uppercase text-[10px]">Pregador:</strong> {state.cultInfo.pregador || '-'}</p>
+                                        <p><strong className="text-slate-400 uppercase text-[10px]">Dirigente:</strong> {state.cultInfo.dirigente || '-'}</p>
+                                    </div>
+                                </section>
+                            </div>
+                            <div className="col-span-8">
+                                <h3 className="font-black uppercase text-[10px] text-slate-400 mb-4 border-b border-slate-100 pb-1 tracking-widest font-sans">Ordem do Culto</h3>
+                                <div className="space-y-4">
+                                    {calculateTimes(state.items, state.cultInfo.startTime).map((it) => (
+                                        <div key={it.id} className="flex gap-4 items-start border-b border-slate-50 pb-2 text-slate-900 font-sans">
+                                            <span className="font-mono font-bold text-slate-300 w-12 text-sm">{it.startTime}</span>
+                                            <div className="flex-1">
+                                                <div className="flex justify-between">
+                                                    <span className="font-bold text-slate-800">{it.title}</span>
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">{it.responsible || 'Equipa'}</span>
+                                                </div>
+                                                <p className="text-xs text-slate-500 italic mt-0.5">{it.description}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-6 bg-slate-50 p-6 rounded-lg border border-slate-100 text-slate-900 mb-10">
+                            {Object.entries(state.obsDepartamentos).map(([k, v]) => v && (
+                                <div key={k} className="text-xs">
+                                    <strong className="uppercase text-slate-400 mb-1 block text-[10px] tracking-widest font-sans">{k}</strong>
+                                    <p className="text-slate-600 whitespace-pre-line leading-relaxed">{v}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="flex justify-center mt-12 no-print pb-10">
+                        <button onClick={() => window.print()} className="px-12 py-4 bg-white text-slate-900 rounded-3xl font-black shadow-2xl flex items-center gap-3 hover:scale-105 active:scale-95 transition-all uppercase text-xs tracking-widest">
+                            <icons.Print size={24}/> Imprimir Ordem de Culto
+                        </button>
+                    </div>
+                </div>
+            );
+
+            // --- MAIN SHELL ---
+            return (
+                <div className="h-screen flex flex-col overflow-hidden bg-slate-950">
+                    <nav className="glass h-16 shrink-0 flex items-center justify-between px-8 z-[100] no-print relative shadow-2xl border-b border-white/5">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/30">
+                                <icons.Monitor className="text-white" size={24}/>
+                            </div>
+                            <div className="hidden sm:block">
+                                <h1 className="text-xl font-black uppercase tracking-tighter leading-none italic text-slate-100">Briefing <span className="text-indigo-500 font-black">Pro</span></h1>
+                                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest tracking-tighter">Control Center v7.0</p>
+                            </div>
+                        </div>
+
+                        <div className="flex bg-slate-900/50 p-1 rounded-2xl border border-white/5">
+                            {[
+                                { id: 'planning', l: 'Planejamento', i: <icons.Settings size={14}/> },
+                                { id: 'live', l: 'Ao Vivo', i: <icons.Play size={14}/> },
+                                { id: 'roteiro', l: 'Roteiro', i: <icons.Roteiro size={14}/> }
+                            ].map(t => (
+                                <button key={t.id} onClick={() => setView(t.id)} className={`px-4 sm:px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${view === t.id ? 'bg-indigo-600 text-white shadow-xl scale-105' : 'text-slate-500 hover:text-slate-300'}`}>
+                                    {t.i} <span className="hidden md:inline">{t.l}</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="text-right">
+                            <LiveClock className="text-2xl font-mono font-bold text-indigo-400 leading-none" />
+                        </div>
+                    </nav>
+
+                    <main className={`flex-1 overflow-y-auto no-scrollbar ${view === 'live' ? 'p-0' : 'p-8'}`}>
+                        {view === 'planning' && <PlanningTab />}
+                        {view === 'live' && <LiveTab />}
+                        {view === 'roteiro' && <RoteiroTab />}
+                    </main>
+
+                    {/* Alerta Overlay */}
+                    {state.liveState.alert && (
+                        <div className="fixed top-24 left-1/2 -translate-x-1/2 w-[90%] max-w-4xl bg-red-600 text-white p-10 rounded-[3rem] shadow-[0_0_150px_rgba(220,38,38,0.6)] z-[200] flex items-center gap-10 animate-bounce border-8 border-white/20">
+                            <div className="p-5 bg-white/20 rounded-full shrink-0"><icons.Monitor size={60}/></div>
+                            <div>
+                                <span className="text-xs font-black uppercase tracking-[0.4em] opacity-70 block mb-2 tracking-widest">Mensagem da Direção</span>
+                                <h2 className="text-5xl font-black uppercase leading-tight tracking-tighter">{state.liveState.alert.message}</h2>
+                            </div>
+                        </div>
+                    )}
+                    
+                    <div className="fixed bottom-10 right-10 z-[100] no-print">
+                        <button onClick={() => {
+                            const m = prompt("Alerta para a equipe:");
+                            if (m) {
+                                sync(p => ({...p, liveState: {...p.liveState, alert: {message: m, time: Date.now()}}}));
+                                setTimeout(() => sync(p => ({...p, liveState: {...p.liveState, alert: null}})), 8000);
+                            }
+                        }} title="Enviar Alerta" className="w-16 h-16 bg-red-600 text-white rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all">
+                            <icons.Plus className="rotate-45" size={28}/>
+                        </button>
+                    </div>
                 </div>
             );
         };
-        
+
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<React.StrictMode><App /></React.StrictMode>);
+        root.render(<App />);
     </script>
 </body>
 </html>
