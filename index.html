@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestor de Culto & Briefing Pro - V7</title>
+    <title>Gestor de Culto & Briefing Pro - V7.1</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -27,11 +27,30 @@
         .font-serif { font-family: 'Playfair Display', serif; }
         .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
         
-        /* Estilo do Modo Ao Vivo - Imersivo */
-        .live-bg { background-color: #000000 !important; color: white !important; height: 100vh; width: 100vw; }
-        .timer-giant { font-size: min(25vw, 50vh); line-height: 1; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
-        .agora-label { color: #64748b; font-weight: 900; letter-spacing: 0.3em; font-size: 2.5rem; }
-        .a-seguir-label { color: #f59e0b; opacity: 0.8; font-weight: 900; letter-spacing: 0.3em; font-size: 2.5rem; }
+        /* Estilo do Modo Ao Vivo - Imersivo e Altamente Responsivo */
+        .live-bg { 
+            background-color: #000000 !important; 
+            color: white !important; 
+            height: 100vh; 
+            width: 100vw; 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden;
+        }
+        
+        /* O segredo para não sobrepor: usar min() com vh (viewport height) */
+        .timer-giant { 
+            font-size: min(22vw, 42vh); 
+            line-height: 1; 
+            font-weight: 800; 
+            font-family: 'JetBrains Mono', monospace; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .agora-label { color: #64748b; font-weight: 900; letter-spacing: 0.3em; font-size: clamp(1rem, 3vh, 2.5rem); }
+        .a-seguir-label { color: #f59e0b; opacity: 0.8; font-weight: 900; letter-spacing: 0.3em; font-size: clamp(1rem, 3vh, 2.5rem); }
 
         @media screen {
             .paper-view {
@@ -151,7 +170,7 @@
                     { id: '6', title: 'Reflexão e oração – 2026', duration: 10, responsible: 'Pr Marcio', description: 'Planos, sonhos e metas. Música: Seja o Centro', technical: { projection: 'Versículo', sound: 'Pad fundo', lighting: 'Âmbar' }, completed: false, itemColor: '#059669' },
                     { id: '7', title: 'Ofertório', duration: 10, responsible: 'Pr Erick', description: 'Oferta de gratidão. Louvor: Gratidão + Te Agradeço', technical: { projection: 'QR Code', sound: 'Mic Pr Erick', lighting: 'Geral' }, completed: false, itemColor: '#ca8a04' },
                     { id: '8', title: 'Palavra', duration: 15, responsible: 'Pr Felipe', description: 'Louvor: Novo dia, Enquanto oro', technical: { projection: 'Esboço', sound: 'Mic Pr Felipe', lighting: 'Foco' }, completed: false, itemColor: '#2563eb' },
-                    { id: '9', title: 'Ceia', duration: 15, responsible: 'Pastores', description: 'Louvor: Nada além do sangue', technical: { projection: 'Ceia', sound: 'Reverb Alto', lighting: 'Vermelho' }, completed: false, itemColor: '#dc2626' },
+                    { id: '9', title: 'Ceia', duration: 15, responsible: 'Pastores', description: 'Louvor: Nada além do sangue', technical: { projection: 'Ceia visual', sound: 'Reverb Alto', lighting: 'Vermelho' }, completed: false, itemColor: '#dc2626' },
                     { id: '10', title: 'Mensagem', duration: 30, responsible: 'Pr Hugo Campos', description: 'Palavra da virada', technical: { projection: 'Esboço', sound: 'Mic Pr Hugo', lighting: 'Púlpito' }, completed: false, itemColor: '#1e293b' },
                     { id: '11', title: 'Apelo', duration: 5, responsible: 'Pr Hugo Campos', description: '', technical: { projection: 'Background', sound: 'Teclado fundo', lighting: 'Warm White' }, completed: false, itemColor: '#b91c1c' },
                     { id: '12', title: 'Louvor: Eu e minha casa', duration: 5, responsible: 'Min. Louvor', description: '', technical: { projection: 'Lyrics', sound: 'Mix Banda', lighting: 'Full Stage' }, completed: false, itemColor: '#4f46e5' },
@@ -160,7 +179,7 @@
                 ],
                 cultInfo: { titulo: 'Culto da Virada', tema: 'O que almejamos para 2026?', date: '2025-12-31', startTime: '21:25', pregador: 'Pr Hugo Campos', dirigente: 'Louvor + Pastores', local: 'Templo Sede' },
                 equipes: { coordenador: '', saude: 'Equipe Alpha', sonoplastia: 'Mesa 1', projecao: 'Multimídia', transmissao: 'Live', recepcao: 'Diaconato' },
-                obsDepartamentos: { midia: '- Haverá thumb específica para projeção?\n- Haverá slide na pregação?', musica: '- Banda posicionada: 21:00\n- Música ambiente (Spotify): 21:10', staff: '- Coordenador geral definido?', diaconato: '- Água e microfone para pregadores.' },
+                obsDepartamentos: { midia: '', musica: '', staff: '', diaconato: '' },
                 liveState: { currentItemIndex: 0, isRunning: false, itemStartTime: null, accumulatedTime: 0, actualStartTime: null, announcement: null }
             });
 
@@ -168,8 +187,8 @@
 
             // --- SYNC ENGINE ---
             useEffect(() => {
+                const { auth, utils, db, appId } = window.FB_INSTANCE;
                 const initFb = async () => {
-                    const { auth, utils, db, appId } = window.FB_INSTANCE;
                     if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                         await utils.signInWithCustomToken(auth, __initial_auth_token);
                     } else { await utils.signInAnonymously(auth); }
@@ -220,7 +239,8 @@
                 });
             };
 
-            // --- TAB: PLANNING ---
+            // --- TABS ---
+
             const PlanningTab = () => (
                 <div className="max-w-5xl mx-auto space-y-8 animate-fade-in no-print pb-32 pt-4">
                     <section className="glass p-8 rounded-[2.5rem] border border-white/5 space-y-6">
@@ -232,7 +252,7 @@
                             </div>
                             <div>
                                 <label className="text-[10px] font-black text-slate-500 uppercase block mb-1">Início</label>
-                                <input type="time" className="w-full bg-slate-900 border border-white/10 rounded-xl p-3 outline-none focus:border-indigo-500 font-mono text-indigo-400 font-bold" value={state.cultInfo.startTime} onChange={e => sync(p => ({...p, cultInfo: {...p.cultInfo, startTime: e.target.value}}))} />
+                                <input type="time" className="w-full bg-slate-900 border border-white/10 rounded-xl p-3 outline-none font-mono text-indigo-400 font-bold" value={state.cultInfo.startTime} onChange={e => sync(p => ({...p, cultInfo: {...p.cultInfo, startTime: e.target.value}}))} />
                             </div>
                             <div>
                                 <label className="text-[10px] font-black text-slate-500 uppercase block mb-1">Local</label>
@@ -268,7 +288,7 @@
                                             <input className="bg-transparent text-[10px] font-black text-slate-600 outline-none uppercase block mt-1 tracking-widest" placeholder="RESPONSÁVEL" value={it.responsible} onChange={e => sync(p => ({...p, items: p.items.map(x => x.id === it.id ? {...x, responsible: e.target.value} : x)}))} />
                                         </div>
                                         <div className="md:col-span-1 flex items-center gap-2 bg-black/40 p-2 rounded-xl border border-white/5 justify-center">
-                                            <input type="number" className="bg-transparent w-8 text-center font-bold text-sm" value={it.duration} onChange={e => sync(p => ({...p, items: p.items.map(x => x.id === it.id ? {...x, duration: Number(e.target.value)} : x)}))} />
+                                            <input type="number" className="bg-transparent w-8 text-center font-bold text-sm text-indigo-400" value={it.duration} onChange={e => sync(p => ({...p, items: p.items.map(x => x.id === it.id ? {...x, duration: Number(e.target.value)} : x)}))} />
                                             <span className="text-[9px] font-black text-slate-600 uppercase">min</span>
                                         </div>
                                         <div className="md:col-span-5 grid grid-cols-3 gap-2">
@@ -277,7 +297,7 @@
                                             ))}
                                         </div>
                                         <div className="md:col-span-1 text-right">
-                                            <button onClick={() => sync(p => ({...p, items: p.items.filter(x => x.id !== it.id)}))} className="text-slate-700 hover:text-red-500">
+                                            <button onClick={() => sync(p => ({...p, items: p.items.filter(x => x.id !== it.id)}))} className="text-slate-700 hover:text-red-500 transition-colors">
                                                 <icons.Trash2 size={20}/>
                                             </button>
                                         </div>
@@ -289,12 +309,12 @@
                     </section>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <section className="glass p-8 rounded-[2.5rem] border border-white/5">
+                        <section className="glass p-8 rounded-[2.5rem] border border-white/5 text-white">
                             <h2 className="text-2xl font-black mb-8 uppercase tracking-tighter">Escala de Equipes</h2>
-                            <div className="space-y-4">
+                            <div className="grid grid-cols-1 gap-4">
                                 {Object.keys(state.equipes).map(role => (
                                     <div key={role} className="flex flex-col">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-widest">{role}</label>
+                                        <label className="text-[10px] font-bold text-slate-600 uppercase mb-1 tracking-widest">{role}</label>
                                         <input className="bg-slate-900 border border-white/10 rounded-xl p-3 text-sm focus:border-indigo-500 outline-none text-slate-200" value={state.equipes[role]} onChange={e => sync(p => ({...p, equipes: {...p.equipes, [role]: e.target.value}}))} />
                                     </div>
                                 ))}
@@ -320,7 +340,7 @@
                 </div>
             );
 
-            // --- TAB: LIVE (IMERSIVO - REQUESTED FORMAT) ---
+            // --- TAB: LIVE (IMERSIVO - REESTRUTURADO PARA NÃO SOBREPOR) ---
             const LiveTab = () => {
                 const it = state.items[state.liveState.currentItemIndex];
                 const next = state.items[state.liveState.currentItemIndex + 1];
@@ -340,60 +360,67 @@
                 const remaining = (it?.duration * 60) - elapsed;
 
                 return (
-                    <div className="h-full w-full fixed inset-0 z-0 live-bg text-white flex flex-col p-8 lg:p-16 animate-fade-in no-print pt-24 overflow-hidden select-none">
-                        {/* Header Superior */}
-                        <div className="w-full flex justify-between items-start shrink-0">
+                    <div className="live-bg p-8 lg:px-16 lg:py-10 animate-fade-in no-print select-none">
+                        {/* Header Superior: Agora / Relógio */}
+                        <div className="w-full flex justify-between items-start shrink-0 mb-4">
                             <div className="max-w-[70%]">
-                                <div className="agora-label uppercase tracking-widest">AGORA</div>
-                                <div className="text-8xl font-black mt-2 tracking-tighter truncate" style={{color: it?.itemColor || '#FFFFFF'}}>{it?.title || 'FIM'}</div>
-                                <div className="text-3xl text-slate-400 font-medium italic mt-4 truncate">{it?.responsible}</div>
+                                <div className="agora-label">AGORA</div>
+                                <div className="text-6xl lg:text-7xl font-black mt-1 tracking-tighter truncate" style={{color: it?.itemColor || '#FFFFFF'}}>{it?.title || 'FIM'}</div>
+                                <div className="text-2xl lg:text-3xl text-slate-400 font-medium italic mt-2 truncate">{it?.responsible}</div>
                             </div>
-                            <LiveClock className="text-8xl text-slate-400 font-mono font-bold" />
+                            <LiveClock className="text-7xl lg:text-8xl text-slate-400 font-mono font-bold" />
                         </div>
 
-                        {/* Cronômetro Gigante Centralizado */}
-                        <div className="flex-grow flex flex-col items-center justify-center relative min-h-0">
-                            <div className={`timer-giant ${remaining < 0 ? 'text-red-500' : remaining < 60 ? 'text-yellow-400' : 'text-white'}`}>
-                                {formatTime(remaining)}
+                        {/* Conteúdo Central: Timer + Notas Técnicas (Ajustado com Grid) */}
+                        <div className="flex-grow grid grid-cols-12 items-center gap-12 min-h-0">
+                            {/* Cronômetro Gigante - Espaço Reservado */}
+                            <div className="col-span-12 lg:col-span-9 flex flex-col items-center justify-center">
+                                <div className={`timer-giant leading-none transition-colors duration-500 ${remaining < 0 ? 'text-red-500' : remaining < 60 ? 'text-yellow-400' : 'text-white'}`}>
+                                    {formatTime(remaining)}
+                                </div>
                             </div>
                             
-                            {/* Instruções Técnicas na Lateral Direita */}
-                            <div className="absolute right-0 top-1/2 -translate-y-1/2 space-y-6 max-w-xs text-right hidden lg:flex flex-col">
-                                {['projection', 'sound', 'lighting'].map(tk => it?.technical[tk] && (
-                                    <div key={tk} className="bg-white/5 border-r-4 border-indigo-500 p-5 backdrop-blur-md rounded-l-3xl shadow-2xl transition-all">
-                                        <div className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">{tk === 'projection' ? 'PROJEÇÃO' : tk.toUpperCase()}</div>
-                                        <div className="text-2xl font-bold text-slate-100 leading-tight">{it.technical[tk]}</div>
+                            {/* Painel Lateral Técnico (Instruções) - Espaço Reservado */}
+                            <div className="hidden lg:flex col-span-3 flex-col gap-4 text-right justify-center">
+                                {[
+                                    { k: 'projection', l: 'PROJEÇÃO' },
+                                    { k: 'sound', l: 'SOM' },
+                                    { k: 'lighting', l: 'ILUMINAÇÃO' }
+                                ].map(tk => it?.technical[tk.k] && (
+                                    <div key={tk.k} className="bg-white/5 border-r-4 border-indigo-500 p-5 backdrop-blur-md rounded-l-3xl shadow-2xl transition-all hover:bg-white/10">
+                                        <div className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">{tk.l}</div>
+                                        <div className="text-2xl font-bold text-slate-100 leading-tight">{it.technical[tk.k]}</div>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
-                        {/* Footer - A Seguir + Controlos */}
-                        <div className="w-full flex justify-between items-end border-t border-white/10 pt-8 pb-4 shrink-0">
-                            <div className="text-left flex-1 max-w-[65%]">
-                                <div className="a-seguir-label uppercase tracking-widest">A SEGUIR</div>
+                        {/* Footer: A Seguir + Controlos */}
+                        <div className="w-full flex justify-between items-end border-t border-white/10 pt-6 pb-2 shrink-0 mt-4">
+                            <div className="text-left flex-1 max-w-[60%]">
+                                <div className="a-seguir-label">A SEGUIR</div>
                                 {next ? (
                                     <>
-                                        <div className="text-7xl font-bold text-amber-400 tracking-tighter mt-2 truncate">{next.title}</div>
-                                        <div className="text-2xl text-slate-500 font-medium mt-1 truncate">{next.responsible}</div>
+                                        <div className="text-6xl lg:text-7xl font-bold text-amber-400 tracking-tighter mt-1 truncate">{next.title}</div>
+                                        <div className="text-xl lg:text-2xl text-slate-500 font-medium mt-1 truncate">{next.responsible}</div>
                                     </>
-                                ) : <div className="text-5xl text-slate-700 font-black mt-2 uppercase tracking-widest italic tracking-tighter">Agenda Finalizada</div>}
+                                ) : <div className="text-4xl text-slate-700 font-black mt-2 uppercase tracking-widest italic">Encerrado</div>}
                             </div>
                             
                             {/* Controlos Ao Vivo */}
                             <div className="flex gap-6 pb-2">
-                                <button onClick={toggleTimer} title="Play/Pause" className={`p-8 rounded-[2.5rem] transition-all shadow-2xl ${state.liveState.isRunning ? 'bg-amber-600' : 'bg-emerald-600'} hover:scale-110 active:scale-90`}>
-                                    {state.liveState.isRunning ? <icons.Pause size={48}/> : <icons.Play size={48}/>}
+                                <button onClick={toggleTimer} title="Play/Pause" className={`p-6 lg:p-8 rounded-[2.5rem] transition-all shadow-2xl ${state.liveState.isRunning ? 'bg-amber-600' : 'bg-emerald-600'} hover:scale-110 active:scale-90`}>
+                                    {state.liveState.isRunning ? <icons.Pause size={40}/> : <icons.Play size={40}/>}
                                 </button>
-                                <button onClick={handleNext} title="Próximo Bloco" className="p-8 bg-indigo-600 rounded-[2.5rem] hover:bg-indigo-500 transition-all shadow-2xl hover:scale-110 active:scale-90 text-white">
-                                    <icons.Skip size={48}/>
+                                <button onClick={handleNext} title="Avançar Bloco" className="p-6 lg:p-8 bg-indigo-600 rounded-[2.5rem] hover:bg-indigo-500 transition-all shadow-2xl hover:scale-110 active:scale-90 text-white">
+                                    <icons.Skip size={40}/>
                                 </button>
                             </div>
                         </div>
 
-                        {/* Notas no Centro Inferior */}
+                        {/* Nota Flutuante no Centro Inferior */}
                         {it?.description && (
-                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 glass px-12 py-3 rounded-full border border-white/10 animate-pulse-soft max-w-3xl z-50">
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 glass px-12 py-3 rounded-full border border-white/10 animate-pulse-soft max-w-2xl z-50">
                                 <p className="text-slate-300 text-lg font-bold italic text-center truncate">"{it.description}"</p>
                             </div>
                         )}
@@ -403,9 +430,9 @@
 
             const RoteiroTab = () => (
                 <div className="animate-fade-in pb-32 pt-4">
-                    <div className="paper-view text-slate-900">
-                        <div className="flex justify-between items-start border-b-4 border-slate-900 pb-6 mb-8">
-                            <div className="flex-1 text-slate-900">
+                    <div className="paper-view">
+                        <div className="flex justify-between items-start border-b-4 border-slate-900 pb-6 mb-8 text-slate-900 font-sans">
+                            <div className="flex-1">
                                 <h1 className="text-4xl font-serif font-bold uppercase tracking-tight leading-tight">{state.cultInfo.titulo}</h1>
                                 <p className="text-xl text-slate-600 italic font-serif mt-1">{state.cultInfo.tema}</p>
                             </div>
@@ -415,7 +442,7 @@
                                 <div className="text-lg text-slate-500 font-mono">{state.cultInfo.startTime}h • {state.cultInfo.local || 'Auditório'}</div>
                             </div>
                         </div>
-                        <div className="grid grid-cols-12 gap-8 mb-10 text-slate-900">
+                        <div className="grid grid-cols-12 gap-8 mb-10 text-slate-900 font-sans">
                             <div className="col-span-4 space-y-6">
                                 <section>
                                     <h3 className="font-black uppercase text-[10px] text-slate-400 mb-3 border-b border-slate-100 pb-1">Escala Técnica</h3>
@@ -428,7 +455,7 @@
                                 <section>
                                     <h3 className="font-black uppercase text-[10px] text-slate-400 mb-3 border-b border-slate-100 pb-1 tracking-widest">Responsáveis</h3>
                                     <div className="space-y-1 text-sm">
-                                        <p><strong className="text-slate-400 uppercase text-[10px]">Pregador:</strong> {state.cultInfo.pregador || '-'}</p>
+                                        <p><strong className="text-slate-400 uppercase text-[10px]">Mensagem:</strong> {state.cultInfo.pregador || '-'}</p>
                                         <p><strong className="text-slate-400 uppercase text-[10px]">Dirigente:</strong> {state.cultInfo.dirigente || '-'}</p>
                                     </div>
                                 </section>
@@ -461,14 +488,14 @@
                         </div>
                     </div>
                     <div className="flex justify-center mt-12 no-print pb-10">
-                        <button onClick={() => window.print()} className="px-12 py-4 bg-white text-slate-900 rounded-3xl font-black shadow-2xl flex items-center gap-3 hover:scale-105 active:scale-95 transition-all uppercase text-xs tracking-widest">
-                            <icons.Print size={24}/> Imprimir Ordem de Culto
+                        <button onClick={() => window.print()} className="px-12 py-4 bg-white text-slate-900 rounded-3xl font-black shadow-2xl flex items-center gap-3 hover:scale-105 transition-all text-xs tracking-widest uppercase">
+                            <icons.Print size={24}/> Imprimir Roteiro
                         </button>
                     </div>
                 </div>
             );
 
-            // --- MAIN SHELL ---
+            // --- SHELL ---
             return (
                 <div className="h-screen flex flex-col overflow-hidden bg-slate-950">
                     <nav className="glass h-16 shrink-0 flex items-center justify-between px-8 z-[100] no-print relative shadow-2xl border-b border-white/5">
@@ -478,7 +505,7 @@
                             </div>
                             <div className="hidden sm:block">
                                 <h1 className="text-xl font-black uppercase tracking-tighter leading-none italic text-slate-100">Briefing <span className="text-indigo-500 font-black">Pro</span></h1>
-                                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest tracking-tighter">Control Center v7.0</p>
+                                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest tracking-tighter">Control Center v7.1</p>
                             </div>
                         </div>
 
@@ -505,7 +532,6 @@
                         {view === 'roteiro' && <RoteiroTab />}
                     </main>
 
-                    {/* Alerta Overlay */}
                     {state.liveState.alert && (
                         <div className="fixed top-24 left-1/2 -translate-x-1/2 w-[90%] max-w-4xl bg-red-600 text-white p-10 rounded-[3rem] shadow-[0_0_150px_rgba(220,38,38,0.6)] z-[200] flex items-center gap-10 animate-bounce border-8 border-white/20">
                             <div className="p-5 bg-white/20 rounded-full shrink-0"><icons.Monitor size={60}/></div>
@@ -524,7 +550,7 @@
                                 setTimeout(() => sync(p => ({...p, liveState: {...p.liveState, alert: null}})), 8000);
                             }
                         }} title="Enviar Alerta" className="w-16 h-16 bg-red-600 text-white rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all">
-                            <icons.Plus className="rotate-45" size={28}/>
+                            <icons.Send className="rotate-45" size={28}/>
                         </button>
                     </div>
                 </div>
