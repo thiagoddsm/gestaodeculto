@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-pt">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestor de Culto & Briefing Pro</title>
+    <title>Gestor de Culto & Briefing Pro - Premium</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -11,7 +11,7 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&family=Playfair+Display:ital,wght@0,700;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     
     <!-- React & Babel -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -28,7 +28,7 @@
         .font-serif { font-family: 'Playfair Display', serif; }
         .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
         
-        /* Estilo para a folha de Roteiro (Briefing Pro) */
+        /* Estilo para a folha de Roteiro (Briefing Pro - requested style) */
         .paper-view {
             background: white;
             color: #0f172a;
@@ -45,6 +45,7 @@
             .no-print { display: none !important; }
             body { background: white !important; }
             .paper-view { width: 100%; margin: 0; box-shadow: none; padding: 10mm; color: black; }
+            input, textarea { border: none !important; resize: none; background: transparent !important; }
         }
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -62,7 +63,10 @@
         input[type="color"]::-webkit-color-swatch { border-radius: 4px; border: 1px solid #475569; }
 
         .timer-giant { font-size: clamp(6rem, 18vw, 15rem); line-height: 1; }
-        .team-text-large { font-size: 22px; }
+        .team-text-large { font-size: 22px; line-height: 1.4; }
+
+        .agora-label { color: #475569; font-weight: 900; letter-spacing: 0.4em; font-size: clamp(1rem, 3.5vh, 2rem); }
+        .a-seguir-label { color: #d97706; opacity: 0.9; font-weight: 900; letter-spacing: 0.4em; font-size: clamp(1rem, 3.5vh, 2rem); }
     </style>
 </head>
 <body>
@@ -71,10 +75,9 @@
     <!-- Firebase SDK Modular -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, onSnapshot, setDoc, collection, addDoc, updateDoc, serverTimestamp, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Parâmetros do ambiente (preenchidos automaticamente ou com fallback para teste)
         const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{"apiKey":"AIzaSyCYaOPtQdD1hU29awdgeN-rEGaoLGBGYBM","authDomain":"gestao-de-culto.firebaseapp.com","projectId":"gestao-de-culto","storageBucket":"gestao-de-culto.appspot.com","messagingSenderId":"843566675046","appId":"1:843566675046:web:cc1e54a813827f4502a9a7"}');
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'gestao-premium-v8';
 
@@ -82,7 +85,7 @@
             app: initializeApp(firebaseConfig),
             auth: getAuth(),
             db: getFirestore(),
-            utils: { doc, onSnapshot, setDoc, collection, addDoc, updateDoc, serverTimestamp, signInAnonymously, onAuthStateChanged, getDocs, deleteDoc },
+            utils: { doc, onSnapshot, setDoc, collection, addDoc, updateDoc, serverTimestamp, signInAnonymously, onAuthStateChanged, getDocs, deleteDoc, signInWithCustomToken },
             appId
         };
     </script>
@@ -96,14 +99,16 @@
                 play: <path d="m5 3 14 9-14 9V3z" />,
                 pause: <path d="M6 4h4v16H6zm8 0h4v16h-4z" />,
                 plus: <path d="M12 5v14M5 12h14" />,
-                settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l-.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />,
+                settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l-.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" />,
                 trash: <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" />,
                 chevron: <path d="m9 18 6-6-6-6" />,
                 file: <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" />,
                 music: <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />,
                 clock: <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />,
                 send: <path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" />,
-                print: <polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" />
+                print: <polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" />,
+                skip: <path d="m5 4 10 8-10 8V4zM19 5v14" />,
+                pdf: <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
             };
             return (
                 <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -112,12 +117,11 @@
             );
         };
 
-        // --- COMPONENTS ---
-
-        const formatTime = (seconds) => {
-            const abs = Math.abs(Math.floor(seconds));
-            const m = Math.floor(abs / 60);
-            const s = abs % 60;
+        // --- HELPERS ---
+        const formatSecs = (seconds) => {
+            const absSeconds = Math.abs(Math.floor(seconds));
+            const m = Math.floor(absSeconds / 60);
+            const s = absSeconds % 60;
             return `${seconds < 0 ? '-' : ''}${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
         };
 
@@ -130,16 +134,18 @@
             });
         };
 
+        // --- MAIN APPLICATION ---
         const App = () => {
-            const [view, setView] = useState('planejamento'); // 'planejamento', 'aovivo', 'roteiro'
+            const [viewMode, setViewMode] = useState('coordinator');
+            const [activeTab, setActiveTab] = useState('planejamento'); 
             const [user, setUser] = useState(null);
             const [localTime, setLocalTime] = useState(new Date());
             const [state, setState] = useState({
                 items: [],
                 setlist: [],
-                equipes: { som: '', projecao: '', luz: '', staff: '', recepcao: '' },
-                deptNotes: { midia: '', louvor: '', geral: '' },
-                cultInfo: { titulo: 'Culto de Celebração', tema: '', date: new Date().toISOString().split('T')[0], startTime: '19:00', pregador: '', dirigente: '', local: '' },
+                equipes: { coordenador: '', som: '', projecao: '', luz: '', staff: '', recepcao: '' },
+                deptNotes: { midia: '', louvor: '', staff: '', diaconato: '' },
+                cultInfo: { titulo: 'Culto de Celebração', tema: '', date: new Date().toISOString().split('T')[0], startTime: '19:00', pregador: '', dirigente: '', local: '', bannerImage: '' },
                 liveState: { currentItemIndex: 0, isRunning: false, itemStartTime: null, accumulatedTime: 0, announcement: null }
             });
             const [presets, setPresets] = useState([]);
@@ -148,10 +154,20 @@
             const fb = window.FB_INSTANCE;
 
             useEffect(() => {
-                const timer = setInterval(() => setLocalTime(new Date()), 1000);
+                const params = new URLSearchParams(window.location.search);
+                const v = params.get('view');
+                if (v) setViewMode(v);
+
+                const interval = setInterval(() => setLocalTime(new Date()), 1000);
                 
                 if (fb) {
-                    fb.utils.signInAnonymously(fb.auth);
+                    const startAuth = async () => {
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await fb.utils.signInWithCustomToken(fb.auth, __initial_auth_token);
+                        } else { await fb.utils.signInAnonymously(fb.auth); }
+                    };
+                    startAuth();
+
                     fb.utils.onAuthStateChanged(fb.auth, u => {
                         setUser(u);
                         if (u) {
@@ -164,12 +180,12 @@
                         }
                     });
                 }
-                return () => clearInterval(timer);
+                return () => clearInterval(interval);
             }, []);
 
-            const sync = async (next) => {
+            const sync = async (nextState) => {
                 if (user && fb) {
-                    const data = typeof next === 'function' ? next(state) : next;
+                    const data = typeof nextState === 'function' ? nextState(state) : nextState;
                     await fb.utils.setDoc(fb.utils.doc(fb.db, "artifacts", fb.appId, "public", "data", "live"), data, { merge: true });
                 }
             };
@@ -182,20 +198,22 @@
                 });
             };
 
-            // --- TABS RENDERING ---
+            if (viewMode === 'team') return <PublicTeamView state={state} localTime={localTime} formatSecs={formatSecs} />;
+            if (viewMode === 'timer') return <GiantTimerView state={state} localTime={localTime} formatSecs={formatSecs} />;
+            if (viewMode === 'palco') return <StageView state={state} localTime={localTime} formatSecs={formatSecs} />;
+
             return (
-                <div className="min-h-screen flex flex-col h-screen overflow-hidden">
-                    {/* Top Navbar */}
+                <div className="min-h-screen flex flex-col h-screen overflow-hidden bg-slate-950">
                     <nav className="bg-slate-900 border-b border-white/5 p-4 flex justify-between items-center z-[100] shadow-2xl no-print shrink-0">
                         <div className="flex items-center gap-4">
                             <div className="bg-indigo-600 p-2 rounded-xl shadow-lg shadow-indigo-600/20"><Icon name="settings" size={20} className="text-white"/></div>
                             <div>
-                                <h1 className="font-black text-lg tracking-tighter uppercase leading-none italic">Gestor de Culto</h1>
-                                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">Briefing Pro v8.5</p>
+                                <h1 className="font-black text-lg tracking-tighter uppercase leading-none italic text-white">Gestor de Culto</h1>
+                                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">Premium Total Edition</p>
                             </div>
                         </div>
 
-                        <div className="flex bg-black/40 p-1 rounded-xl border border-white/5 mx-4">
+                        <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
                             {[
                                 {id: 'planejamento', label: 'Planejamento', icon: 'settings'},
                                 {id: 'aovivo', label: 'Ao Vivo', icon: 'play'},
@@ -203,24 +221,23 @@
                             ].map(tab => (
                                 <button 
                                     key={tab.id}
-                                    onClick={() => setView(tab.id)}
-                                    className={`px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all ${view === tab.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
                                 >
-                                    <Icon name={tab.icon} size={14} /> <span>{tab.label}</span>
+                                    <Icon name={tab.icon} size={14} /> <span className="hidden md:inline">{tab.label}</span>
                                 </button>
                             ))}
                         </div>
 
                         <div className="text-right">
-                            <div className="text-2xl font-mono font-bold text-indigo-400 leading-none">{localTime.toLocaleTimeString('pt-PT', {hour: '2-digit', minute:'2-digit', second: '2-digit'})}</div>
+                            <div className="text-2xl font-mono font-bold text-indigo-400 leading-none">{localTime.toLocaleTimeString('pt-BR')}</div>
                         </div>
                     </nav>
 
-                    {/* Main Workspace */}
                     <main className="flex-grow overflow-y-auto no-scrollbar">
-                        {view === 'planejamento' && <PlanningTab state={state} handleUpdate={handleUpdate} presets={presets} loadedPreset={loadedPreset} setLoadedPreset={setLoadedPreset} />}
-                        {view === 'aovivo' && <LiveDashboard state={state} handleUpdate={handleUpdate} formatSecs={formatTime} />}
-                        {view === 'roteiro' && <ScriptTab state={state} handleUpdate={handleUpdate} />}
+                        {activeTab === 'planejamento' && <PlanningTab state={state} handleUpdate={handleUpdate} presets={presets} loadedPreset={loadedPreset} setLoadedPreset={setLoadedPreset} />}
+                        {activeTab === 'aovivo' && <LiveDashboard state={state} handleUpdate={handleUpdate} formatSecs={formatSecs} />}
+                        {activeTab === 'roteiro' && <ScriptTab state={state} handleUpdate={handleUpdate} />}
                     </main>
 
                     <AnnouncementBanner announcement={state.liveState.announcement} />
@@ -228,7 +245,7 @@
             );
         };
 
-        // --- SUB TABS ---
+        // --- SUB-TABS ---
 
         const PlanningTab = ({ state, handleUpdate, presets, loadedPreset, setLoadedPreset }) => {
             const handleAddItem = () => {
@@ -236,14 +253,22 @@
                 handleUpdate(s => ({...s, items: [...s.items, newItem]}));
             };
 
+            const handleSavePreset = async () => {
+                const name = prompt("Nome do modelo:", loadedPreset?.name || "");
+                if (!name) return;
+                const db = window.FB_INSTANCE.db;
+                const docRef = await window.FB_INSTANCE.utils.addDoc(window.FB_INSTANCE.utils.collection(db, "artifacts", window.FB_INSTANCE.appId, "public", "data", "presets"), { ...state, name, savedAt: Date.now() });
+                setLoadedPreset({ id: docRef.id, name });
+            };
+
             return (
                 <div className="p-4 lg:p-10 max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fade-in no-print">
                     <div className="lg:col-span-8 space-y-6">
                         <div className="bg-slate-900 border border-white/5 p-8 rounded-[2.5rem] shadow-xl">
                             <div className="flex justify-between items-center mb-8 border-b border-white/5 pb-6">
-                                <h2 className="text-2xl font-black uppercase tracking-tighter italic">Liturgia</h2>
+                                <h2 className="text-xl font-black uppercase tracking-widest text-white">Configuração da Liturgia</h2>
                                 <button onClick={handleAddItem} className="bg-white text-black px-6 py-2.5 rounded-full text-xs font-black uppercase flex items-center gap-2 hover:bg-indigo-400 transition-all shadow-lg">
-                                    <Icon name="plus" size={16} /> Adicionar Item
+                                    <Icon name="plus" size={16} /> Adicionar
                                 </button>
                             </div>
 
@@ -263,18 +288,19 @@
                                         </div>
                                         <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-8">
                                             <div className="space-y-4">
-                                                <input className="w-full text-xl font-black text-white bg-transparent border-none p-0 focus:ring-0 placeholder:text-slate-700" placeholder="Título do Momento" value={it.title} onChange={e => handleUpdate(s => { const ni = [...s.items]; ni[idx].title = e.target.value; return {...s, items: ni}; })} />
+                                                <input className="w-full text-xl font-black text-white bg-transparent border-none p-0 focus:ring-0 placeholder:text-slate-700" placeholder="Momento" value={it.title} onChange={e => handleUpdate(s => { const ni = [...s.items]; ni[idx].title = e.target.value; return {...s, items: ni}; })} />
                                                 <div className="flex gap-4">
                                                     <input className="text-xs text-indigo-400 font-bold bg-transparent border-none p-0 w-1/2" placeholder="Responsável" value={it.responsible} onChange={e => handleUpdate(s => { const ni = [...s.items]; ni[idx].responsible = e.target.value; return {...s, items: ni}; })} />
                                                     <div className="flex items-center gap-2 bg-white/5 px-2 py-1 rounded-lg">
                                                         <Icon name="clock" size={12} className="text-slate-500" />
-                                                        <input type="number" className="text-xs font-bold text-slate-300 w-10 bg-transparent text-center" value={it.duration} onChange={e => handleUpdate(s => { const ni = [...s.items]; ni[idx].duration = e.target.value; return {...s, items: ni}; })} />
+                                                        <input type="number" className="text-xs font-bold text-slate-300 w-10 bg-transparent text-center" value={it.duration} onChange={e => handleUpdate(s => { const ni = [...s.items]; ni[idx].duration = Number(e.target.value); return {...s, items: ni}; })} />
                                                     </div>
                                                 </div>
                                             </div>
                                             <div className="grid grid-cols-1 gap-2">
-                                                <input className="text-[10px] p-2.5 bg-black/40 border border-white/5 rounded-xl text-slate-300 placeholder:text-slate-600 focus:border-indigo-500/50 outline-none" placeholder="Instrução Luz" value={it.technical?.lighting} onChange={e => handleUpdate(s => { const ni = [...s.items]; ni[idx].technical = {...ni[idx].technical, lighting: e.target.value}; return {...s, items: ni}; })} />
-                                                <input className="text-[10px] p-2.5 bg-black/40 border border-white/5 rounded-xl text-slate-300 placeholder:text-slate-600 focus:border-indigo-500/50 outline-none" placeholder="Instrução Projeção" value={it.technical?.projection} onChange={e => handleUpdate(s => { const ni = [...s.items]; ni[idx].technical = {...ni[idx].technical, projection: e.target.value}; return {...s, items: ni}; })} />
+                                                <input className="text-[10px] p-2.5 bg-black/40 border border-white/5 rounded-xl text-slate-300 placeholder:text-slate-600 outline-none" placeholder="Nota Luz" value={it.technical?.lighting} onChange={e => handleUpdate(s => { const ni = [...s.items]; ni[idx].technical = {...ni[idx].technical, lighting: e.target.value}; return {...s, items: ni}; })} />
+                                                <input className="text-[10px] p-2.5 bg-black/40 border border-white/5 rounded-xl text-slate-300 placeholder:text-slate-600 focus:border-indigo-500/50 outline-none" placeholder="Nota Projeção" value={it.technical?.projection} onChange={e => handleUpdate(s => { const ni = [...s.items]; ni[idx].technical = {...ni[idx].technical, projection: e.target.value}; return {...s, items: ni}; })} />
+                                                <textarea className="text-[10px] p-2.5 bg-black/40 border border-white/5 rounded-xl text-slate-400 h-12 outline-none resize-none" placeholder="Instruções e Setlist..." value={it.description} onChange={e => handleUpdate(s => { const ni = [...s.items]; ni[idx].description = e.target.value; return {...s, items: ni}; })} />
                                             </div>
                                         </div>
                                         <button onClick={() => handleUpdate(s => ({...s, items: s.items.filter(x => x.id !== it.id)}))} className="text-slate-700 hover:text-red-500 self-center p-2"><Icon name="trash" size={20}/></button>
@@ -286,41 +312,67 @@
 
                     <div className="lg:col-span-4 space-y-6">
                         <section className="bg-indigo-900/20 border border-indigo-500/10 p-8 rounded-[2.5rem] shadow-xl">
-                            <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-6">Presets & Modelos</h3>
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-6 flex items-center gap-2"><Icon name="save" size={14}/> Gestão de Presets</h3>
                             <div className="space-y-4">
                                 <select className="w-full p-4 bg-black/40 border border-white/5 rounded-2xl text-sm text-slate-300 outline-none" value={loadedPreset?.id || ''} onChange={e => {
                                     const p = presets.find(x => x.id === e.target.value);
                                     if(p) { handleUpdate({...p, liveState: state.liveState}); setLoadedPreset(p); }
                                 }}>
-                                    <option value="">Carregar...</option>
+                                    <option value="">Escolher Modelo...</option>
                                     {presets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                 </select>
                                 <div className="grid grid-cols-2 gap-3">
-                                    <button onClick={async () => {
-                                        const n = prompt("Nome do preset:"); if(!n) return;
-                                        const db = window.FB_INSTANCE.db;
-                                        const docRef = await window.FB_INSTANCE.utils.addDoc(window.FB_INSTANCE.utils.collection(db, "artifacts", window.FB_INSTANCE.appId, "public", "data", "presets"), { ...state, name: n, savedAt: Date.now() });
-                                        setLoadedPreset({id: docRef.id, name: n});
-                                    }} className="bg-white text-black py-3 rounded-2xl font-black text-xs uppercase shadow-lg active:scale-95 transition-all">Salvar Novo</button>
+                                    <button onClick={handleSavePreset} className="bg-white text-black py-3 rounded-2xl font-black text-xs uppercase shadow-lg">Salvar Novo</button>
                                     <button onClick={async () => {
                                         if(!loadedPreset) return;
                                         const db = window.FB_INSTANCE.db;
                                         await window.FB_INSTANCE.utils.updateDoc(window.FB_INSTANCE.utils.doc(db, "artifacts", window.FB_INSTANCE.appId, "public", "data", "presets", loadedPreset.id), { ...state, savedAt: Date.now() });
                                         alert("Atualizado!");
-                                    }} disabled={!loadedPreset} className="bg-indigo-600 text-white py-3 rounded-2xl font-black text-xs uppercase disabled:opacity-30 active:scale-95 transition-all">Atualizar</button>
+                                    }} disabled={!loadedPreset} className="bg-indigo-600 text-white py-3 rounded-2xl font-black text-xs uppercase disabled:opacity-30">Atualizar</button>
                                 </div>
                             </div>
                         </section>
 
                         <section className="bg-slate-900 border border-white/5 p-8 rounded-[2.5rem] shadow-xl">
-                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-6">Info do Evento</h3>
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-6">Informação Base</h3>
                             <div className="space-y-4">
-                                <input className="w-full bg-black/40 border border-white/5 rounded-xl p-3 text-sm text-white" placeholder="Título do Culto" value={state.cultInfo.titulo} onChange={e => handleUpdate(s => ({...s, cultInfo: {...s.cultInfo, titulo: e.target.value}}))}/>
-                                <input type="time" className="w-full bg-black/40 border border-white/5 rounded-xl p-3 text-sm text-indigo-400 font-bold" value={state.cultInfo.startTime} onChange={e => handleUpdate(s => ({...s, cultInfo: {...s.cultInfo, startTime: e.target.value}}))}/>
-                                {['pregador', 'local', 'tema'].map(f => (
-                                    <input key={f} className="w-full bg-black/40 border border-white/5 rounded-xl p-3 text-sm text-white" placeholder={f.toUpperCase()} value={state.cultInfo[f]} onChange={e => handleUpdate(s => ({...s, cultInfo: {...s.cultInfo, [f]: e.target.value}}))}/>
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-bold uppercase text-slate-600 ml-1">Título do Evento</label>
+                                    <input className="w-full bg-black/40 border border-white/5 rounded-xl p-3 text-sm text-white" value={state.cultInfo.titulo} onChange={e => handleUpdate(s => ({...s, cultInfo: {...s.cultInfo, titulo: e.target.value}}))}/>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] font-bold uppercase text-slate-600 ml-1">Início</label>
+                                        <input type="time" className="w-full bg-black/40 border border-white/5 rounded-xl p-3 text-sm text-indigo-400 font-bold" value={state.cultInfo.startTime} onChange={e => handleUpdate(s => ({...s, cultInfo: {...s.cultInfo, startTime: e.target.value}}))}/>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] font-bold uppercase text-slate-600 ml-1">Data</label>
+                                        <input type="date" className="w-full bg-black/40 border border-white/5 rounded-xl p-3 text-sm text-white" value={state.cultInfo.date} onChange={e => handleUpdate(s => ({...s, cultInfo: {...s.cultInfo, date: e.target.value}}))}/>
+                                    </div>
+                                </div>
+                                {['pregador', 'dirigente', 'local', 'tema'].map(f => (
+                                    <div key={f} className="space-y-1">
+                                        <label className="text-[9px] font-bold uppercase text-slate-600 ml-1 capitalize">{f}</label>
+                                        <input className="w-full bg-black/40 border border-white/5 rounded-xl p-3 text-sm text-white" value={state.cultInfo[f]} onChange={e => handleUpdate(s => ({...s, cultInfo: {...s.cultInfo, [f]: e.target.value}}))}/>
+                                    </div>
                                 ))}
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-bold uppercase text-slate-600 ml-1">Banner Image (URL)</label>
+                                    <input className="w-full bg-black/40 border border-white/5 rounded-xl p-3 text-[10px] text-indigo-300" placeholder="https://..." value={state.cultInfo.bannerImage} onChange={e => handleUpdate(s => ({...s, cultInfo: {...s.cultInfo, bannerImage: e.target.value}}))}/>
+                                </div>
                             </div>
+                        </section>
+
+                        <section className="bg-slate-900 border border-white/5 p-8 rounded-[2.5rem]">
+                             <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-6">Escala Técnica</h3>
+                             <div className="grid grid-cols-1 gap-3">
+                                {Object.keys(state.equipes).map(role => (
+                                    <div key={role}>
+                                        <label className="text-[9px] font-bold uppercase text-slate-600 ml-1 capitalize">{role}</label>
+                                        <input className="w-full bg-black/40 border border-white/5 rounded-xl p-2.5 text-sm text-slate-200" value={state.equipes[role]} onChange={e => handleUpdate(s => ({...s, equipes: {...s.equipes, [role]: e.target.value}}))}/>
+                                    </div>
+                                ))}
+                             </div>
                         </section>
                     </div>
                 </div>
@@ -344,33 +396,28 @@
 
             return (
                 <div className="p-10 space-y-10 animate-fade-in no-print">
-                    {/* 3 Column Layout Real */}
                     <div className="grid grid-cols-12 gap-8 h-[600px]">
-                        
-                        {/* Col 1: Current / Timer */}
-                        <div className="col-span-5 bg-slate-900 border border-white/5 p-12 rounded-[3rem] flex flex-col shadow-2xl relative overflow-hidden">
+                        <div className="col-span-12 lg:col-span-5 bg-slate-900 border border-white/5 p-12 rounded-[3rem] flex flex-col shadow-2xl relative overflow-hidden">
                             <div className="absolute top-0 left-12 right-12 h-1 bg-indigo-600 rounded-full shadow-[0_0_20px_rgba(79,70,229,0.5)]"></div>
                             <div>
-                                <span className="bg-indigo-600 text-white text-[10px] px-3 py-1 rounded font-black uppercase tracking-widest">Agora</span>
+                                <span className="bg-indigo-600 text-white text-[10px] px-3 py-1 rounded font-black uppercase tracking-widest">Executando</span>
                                 <h2 className="text-6xl font-black text-white mt-6 tracking-tighter leading-[0.9] uppercase">{it?.title || 'FIM'}</h2>
                                 <p className="text-slate-400 mt-4 text-2xl font-medium italic">{it?.responsible || '-'}</p>
                             </div>
                             <div className="flex-grow flex flex-col items-center justify-center py-10">
-                                <div className={`timer-giant font-mono tracking-tighter ${isOvertime ? 'text-red-500' : diff < 60 ? 'text-yellow-400' : 'text-white'}`}>
+                                <div className={`timer-giant font-mono tracking-tighter ${isOvertime ? 'text-red-500' : diff < 60 ? 'text-yellow-400' : 'text-emerald-400'}`}>
                                     {formatSecs(diff)}
                                 </div>
-                                <p className="text-slate-600 font-black uppercase tracking-[0.4em] text-xs mt-10 opacity-30">Contagem de Tempo</p>
                             </div>
                             <div className="flex justify-center gap-4 border-t border-white/5 pt-8">
                                 <button onClick={() => handleUpdate(s => ({...s, liveState: {...s.liveState, isRunning: !s.liveState.isRunning, itemStartTime: s.liveState.isRunning ? null : Date.now(), accumulatedTime: elapsed}}))} className={`flex-1 py-5 rounded-2xl font-black uppercase text-xs tracking-widest ${state.liveState.isRunning ? 'bg-amber-600 text-white' : 'bg-emerald-600 text-white'}`}>
-                                    {state.liveState.isRunning ? 'Pausar Relógio' : 'Iniciar Momento'}
+                                    {state.liveState.isRunning ? 'Pausar' : 'Iniciar'}
                                 </button>
                             </div>
                         </div>
 
-                        {/* Col 2: Technical Notes */}
-                        <div className="col-span-4 bg-slate-900/40 border border-white/5 p-10 rounded-[3rem] flex flex-col shadow-xl">
-                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-600 mb-12">Instruções Técnicas</h3>
+                        <div className="col-span-12 lg:col-span-4 bg-slate-900/60 border border-white/5 p-10 rounded-[3rem] flex flex-col shadow-xl">
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-600 mb-12">Instruções Equipe</h3>
                             <div className="space-y-12 overflow-y-auto no-scrollbar">
                                 {['lighting', 'projection', 'sound'].map(k => {
                                     const val = it?.technical?.[k];
@@ -380,7 +427,7 @@
                                         <div key={k} className="flex gap-6 items-start animate-in slide-in-from-left duration-500">
                                             <div className="w-16 h-16 rounded-2xl border-4 border-white/10 shrink-0 shadow-lg" style={{backgroundColor: color || '#1e293b'}}></div>
                                             <div>
-                                                <span className="text-[10px] font-black uppercase text-slate-500 block mb-1.5 tracking-widest">{k === 'lighting' ? 'Luz' : k === 'projection' ? 'Projeção' : 'Som'}</span>
+                                                <span className="text-[10px] font-black uppercase text-slate-500 block mb-1.5 tracking-widest">{k === 'lighting' ? 'Iluminação' : k === 'projection' ? 'Projeção' : 'Áudio'}</span>
                                                 <p className="text-4xl font-black text-white leading-tight">{val}</p>
                                             </div>
                                         </div>
@@ -389,18 +436,17 @@
                             </div>
                         </div>
 
-                        {/* Col 3: Up Next */}
-                        <div className="col-span-3 bg-white/5 border border-white/5 p-10 rounded-[3rem] flex flex-col opacity-60 hover:opacity-100 transition-all duration-500">
-                             <span className="text-yellow-500 font-black uppercase text-[10px] tracking-[0.3em] block mb-10">Próximo</span>
+                        <div className="col-span-12 lg:col-span-3 bg-white/5 border border-white/5 p-10 rounded-[3rem] flex flex-col opacity-60 hover:opacity-100 transition-all duration-500">
+                             <span className="text-yellow-500 font-black uppercase text-[10px] tracking-[0.3em] block mb-10">Na Sequência</span>
                              {next ? (
                                  <div className="space-y-10 flex-grow flex flex-col">
                                      <h3 className="text-5xl font-black text-white leading-[0.9] tracking-tighter uppercase">{next.title}</h3>
                                      <div className="pt-10 border-t border-white/10 space-y-6">
                                          <p className="text-slate-400 text-xl font-bold uppercase tracking-widest">{next.responsible}</p>
-                                         <p className="text-slate-500 text-lg leading-snug italic">"{next.description || 'Sem notas preparadas.'}"</p>
+                                         <p className="text-slate-500 text-lg leading-snug italic">"{next.description || 'Sem notas.'}"</p>
                                      </div>
                                  </div>
-                             ) : <div className="flex-grow flex items-center justify-center font-black text-slate-800 uppercase tracking-[0.5em] italic">Agenda Finalizada</div>}
+                             ) : <div className="flex-grow flex items-center justify-center font-black text-slate-800 uppercase tracking-[0.5em] italic">Agenda Concluída</div>}
                         </div>
                     </div>
                 </div>
@@ -410,60 +456,72 @@
         const ScriptTab = ({ state, handleUpdate }) => {
             const onExportPDF = () => {
                 const doc = new window.jsPDF();
-                doc.setFont("helvetica", "bold"); doc.setFontSize(22); doc.text(state.cultInfo.titulo, 20, 20);
-                doc.setFontSize(11); doc.setTextColor(100); doc.text(`${state.cultInfo.date} • ${state.cultInfo.startTime}h • ${state.cultInfo.tema || ''}`, 20, 30);
+                doc.setFont("helvetica", "bold"); doc.setFontSize(22); doc.text(state.cultInfo.titulo, 20, 22);
+                doc.setFontSize(11); doc.setTextColor(100); doc.text(`${state.cultInfo.date} • ${state.cultInfo.startTime}h • ${state.cultInfo.tema || ''}`, 20, 32);
                 doc.autoTable({
-                    startY: 40,
-                    head: [['Hora', 'Momento', 'Responsável', 'Duração', 'Descrição']],
+                    startY: 42,
+                    head: [['Hora', 'Momento', 'Responsável', 'Duração', 'Notas']],
                     body: state.items.map(it => [it.startTime, it.title, it.responsible, `${it.duration}m`, it.description]),
                     headStyles: {fillColor: [15, 23, 42]}, theme: 'grid'
                 });
                 doc.save(`briefing_${state.cultInfo.titulo}.pdf`);
             };
 
+            const updateObs = (key, val) => handleUpdate(s => ({...s, obsDepartamentos: {...s.obsDepartamentos, [key]: val}}));
+
             return (
                 <div className="animate-fade-in flex flex-col items-center gap-10 pb-40">
                     <div className="flex gap-4 no-print glass p-4 rounded-3xl border border-white/10 shadow-2xl">
-                        <button onClick={() => window.print()} className="bg-slate-800 text-white px-8 py-3 rounded-2xl font-black uppercase text-xs flex items-center gap-2 hover:bg-slate-700 transition-all"><Icon name="print" size={16}/> Imprimir</button>
-                        <button onClick={onExportPDF} className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-xs flex items-center gap-2 hover:bg-indigo-500 transition-all shadow-lg"><Icon name="pdf" size={16}/> Baixar PDF</button>
+                        <button onClick={() => window.print()} className="bg-slate-800 text-white px-8 py-3 rounded-2xl font-black uppercase text-xs flex items-center gap-2 hover:bg-slate-700 transition-all shadow-lg"><Icon name="print" size={16}/> Imprimir</button>
+                        <button onClick={onExportPDF} className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-xs flex items-center gap-2 hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/30"><Icon name="pdf" size={16}/> Salvar PDF</button>
                     </div>
 
-                    <div className="paper-view font-sans border-t-[12px] border-slate-950">
+                    <div className="paper-view font-sans border-t-[12px] border-slate-900 relative">
+                         {/* Requested Briefing Pro Header Style */}
                          <div className="flex justify-between items-start mb-12 border-b-4 border-slate-900 pb-10">
-                             <div>
+                             <div className="max-w-[70%]">
                                  <h1 className="text-5xl font-serif font-black uppercase tracking-tighter text-slate-950 leading-[0.9] mb-4">{state.cultInfo.titulo}</h1>
-                                 <p className="text-2xl text-slate-500 italic font-serif leading-relaxed">{state.cultInfo.tema || "Celebração Especial"}</p>
+                                 <p className="text-2xl text-amber-700 italic font-serif leading-relaxed">{state.cultInfo.tema || "Adoração e Palavra"}</p>
                              </div>
                              <div className="text-right">
                                  <div className="bg-slate-950 text-white px-6 py-2 text-[10px] font-black uppercase tracking-[0.3em] mb-4 inline-block">BRIEFING PRO</div>
-                                 <div className="text-2xl font-black text-slate-950 font-mono tracking-tighter">{state.cultInfo.date}</div>
-                                 <div className="text-xl font-bold text-indigo-600 font-mono mt-1">{state.cultInfo.startTime}h</div>
+                                 <div className="text-2xl font-black text-slate-900 font-mono tracking-tighter">{new Date(state.cultInfo.date + 'T00:00:00').toLocaleDateString('pt-BR')}</div>
+                                 <div className="text-xl font-bold text-indigo-600 font-mono mt-1">{state.cultInfo.startTime}h • {state.cultInfo.local || 'Templo'}</div>
                              </div>
                          </div>
 
-                         <div className="grid grid-cols-12 gap-12">
+                         {/* Banner Image */}
+                         {state.cultInfo.bannerImage && (
+                            <div className="w-full h-44 mb-12 overflow-hidden rounded-lg shadow-sm border border-amber-100 sepia-[15%]">
+                                <img src={state.cultInfo.bannerImage} alt="Banner" className="w-full h-full object-cover" />
+                            </div>
+                         )}
+
+                         <div className="grid grid-cols-12 gap-12 mb-12">
+                             {/* Sidebar Info */}
                              <div className="col-span-4 space-y-10 border-r border-slate-100 pr-10 shrink-0">
                                  <section>
                                      <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-5 border-b border-slate-50 pb-2">Informação Base</h3>
                                      <div className="space-y-4">
-                                         <div><span className="text-[9px] uppercase font-bold text-slate-400 block">Pregador</span><p className="font-black text-slate-900 text-xl tracking-tight leading-none">{state.cultInfo.pregador || '-'}</p></div>
-                                         <div><span className="text-[9px] uppercase font-bold text-slate-400 block">Dirigente</span><p className="font-bold text-slate-700 text-lg leading-none">{state.cultInfo.dirigente || '-'}</p></div>
+                                         <div><span className="text-[9px] uppercase font-bold text-slate-400 block mb-1">Pregador Principal</span><p className="font-black text-slate-900 text-xl tracking-tight leading-none">{state.cultInfo.pregador || '-'}</p></div>
+                                         <div><span className="text-[9px] uppercase font-bold text-slate-400 block mb-1">Dirigente</span><p className="font-bold text-slate-700 text-lg leading-none">{state.cultInfo.dirigente || '-'}</p></div>
                                      </div>
                                  </section>
                                  <section>
-                                     <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-5 border-b border-slate-50 pb-2">Equipa Técnica</h3>
+                                     <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-5 border-b border-slate-50 pb-2 uppercase">Equipe Técnica</h3>
                                      <div className="space-y-3 text-sm">
                                          {Object.entries(state.equipes).map(([k, v]) => (
-                                             <p key={k} className="leading-tight"><strong className="capitalize text-slate-400 text-[10px] block mb-0.5">{k}</strong> <span className="font-bold text-slate-800">{v || '-'}</span></p>
+                                             <p key={k} className="leading-tight"><strong className="capitalize text-slate-400 text-[9px] block mb-0.5 uppercase">{k}</strong> <span className="font-bold text-slate-800">{v || '-'}</span></p>
                                          ))}
                                      </div>
                                  </section>
                              </div>
 
+                             {/* Liturgy Section */}
                              <div className="col-span-8 flex flex-col">
                                  <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-8 border-b border-slate-900 pb-2 tracking-[0.2em]">Fluxo de Liturgia</h3>
                                  <div className="space-y-8 relative border-l-4 border-slate-50 ml-2">
-                                     {state.items.map((it) => (
+                                     {calculateTimes(state.items, state.cultInfo.startTime).map((it) => (
                                          <div key={it.id} className="relative pl-10">
                                              <div className="absolute left-[-12px] top-1.5 w-5 h-5 rounded-full bg-white border-4 border-slate-200"></div>
                                              <div className="flex justify-between items-baseline mb-1">
@@ -471,7 +529,7 @@
                                                  <span className="text-sm font-mono font-bold text-slate-300 tracking-tighter italic">{it.startTime} <span className="text-[10px] opacity-60 ml-1">({it.duration}m)</span></span>
                                              </div>
                                              <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-widest mb-3">{it.responsible || 'Coletivo'}</p>
-                                             <div className="text-sm text-slate-600 bg-slate-50 p-4 rounded-2xl border border-slate-100 italic leading-relaxed">
+                                             <div className="text-sm text-slate-600 bg-slate-50 p-4 rounded-2xl border border-slate-100 italic leading-relaxed font-medium">
                                                  {it.description || "Sem notas preparadas para este bloco."}
                                              </div>
                                          </div>
@@ -479,23 +537,53 @@
                                  </div>
                              </div>
                          </div>
+
+                         {/* Departamental Checklist Section */}
+                         <div className="border-t-2 border-slate-100 pt-10">
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-6 border-b border-slate-50 pb-2">Checklist Departamental</h4>
+                            <div className="grid grid-cols-2 gap-8">
+                                {[
+                                    {id: 'midia', l: 'Mídia & Projeção'},
+                                    {id: 'musica', l: 'Música & Som'},
+                                    {id: 'staff', l: 'Staff & Recepção'},
+                                    {id: 'diaconato', l: 'Diaconato'}
+                                ].map(dept => (
+                                    <div key={dept.id} className="bg-slate-50 p-6 rounded-3xl border border-slate-100 group transition-colors hover:bg-amber-50/30">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-amber-700 block mb-3">{dept.l}</span>
+                                        <textarea 
+                                            className="w-full text-xs text-slate-700 leading-relaxed whitespace-pre-line bg-transparent border-none p-0 focus:ring-0 outline-none resize-none no-print" 
+                                            rows={3}
+                                            value={state.obsDepartamentos[dept.id]} 
+                                            onChange={e => updateObs(dept.id, e.target.value)}
+                                        />
+                                        <p className="hidden print:block text-xs text-slate-700 leading-relaxed whitespace-pre-line">{state.obsDepartamentos[dept.id]}</p>
+                                    </div>
+                                ))}
+                            </div>
+                         </div>
+
+                         {/* Briefing Footer */}
+                         <div className="mt-20 pt-6 border-t border-amber-100 text-center text-[10px] text-amber-800/60 uppercase tracking-widest flex justify-between">
+                            <span>Gerado por Briefing Pro</span>
+                            <span>Gestão de Culto • {new Date().getFullYear()}</span>
+                         </div>
                     </div>
                 </div>
             );
         };
 
-        // --- PUBLIC VIEWS (COMPONENTS) ---
+        // --- PUBLIC VIEWS ---
 
         const PublicTeamView = ({ state, localTime, formatSecs }) => (
             <div className="h-screen bg-black text-white p-10 flex flex-col gap-10 overflow-hidden font-sans select-none">
                  <div className="flex justify-between items-end border-b border-white/10 pb-8 shrink-0">
                     <div>
-                        <span className="text-indigo-500 font-black uppercase tracking-[0.4em] text-sm mb-3 block">Painel de Operações Profissional</span>
-                        <h1 className="text-8xl font-black uppercase tracking-tighter leading-none">{state.cultInfo.titulo}</h1>
+                        <span className="text-indigo-500 font-black uppercase tracking-[0.4em] text-sm mb-3 block">Painel de Equipe Profissional</span>
+                        <h1 className="text-7xl font-black uppercase tracking-tighter leading-none">{state.cultInfo.titulo}</h1>
                     </div>
                     <div className="text-right">
-                        <div className="text-9xl font-mono leading-none tracking-tighter text-white font-bold">{localTime.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}</div>
-                        <div className="text-slate-500 text-xl mt-4 uppercase tracking-[0.3em] font-bold">{state.cultInfo.date}</div>
+                        <div className="text-8xl font-mono leading-none tracking-tighter text-white font-bold">{localTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+                        <div className="text-slate-500 text-lg mt-4 uppercase tracking-[0.3em] font-bold">{new Date(state.cultInfo.date + 'T00:00:00').toLocaleDateString('pt-BR')}</div>
                     </div>
                 </div>
                 <Live3ColumnView state={state} formatSecs={formatSecs} />
@@ -513,10 +601,10 @@
             }, [state.liveState]);
             const diff = (it?.duration * 60) - display;
             return (
-                <div className="h-screen w-screen bg-black text-white flex flex-col items-center justify-center p-10 font-mono select-none overflow-hidden">
+                <div className="h-screen w-screen bg-black text-white flex flex-col items-center justify-center p-10 font-mono select-none overflow-hidden text-center">
                     <div className="text-4xl opacity-20 mb-8 tracking-[0.2em]">{localTime.toLocaleTimeString()}</div>
-                    <h2 className="text-6xl font-black uppercase tracking-widest text-slate-800 text-center mb-16 px-10 truncate w-full">{it?.title || 'FIM'}</h2>
-                    <div className={`timer-giant leading-none tracking-tighter ${diff < 0 ? 'text-red-600' : diff < 60 ? 'text-yellow-500' : 'text-emerald-500'}`}>
+                    <h2 className="text-6xl font-black uppercase tracking-widest text-slate-800 mb-16 px-10 truncate w-full">{it?.title || 'FIM'}</h2>
+                    <div className={`timer-giant leading-none tracking-tighter ${diff < 0 ? 'text-red-500' : diff < 60 ? 'text-yellow-500' : 'text-emerald-500'}`}>
                         {formatSecs(diff)}
                     </div>
                 </div>
@@ -538,10 +626,10 @@
                 <div className="h-screen w-screen bg-black text-white flex flex-col p-16 font-sans select-none overflow-hidden">
                      <div className="flex justify-between items-start w-full border-b border-white/10 pb-10">
                          <div>
-                             <span className="text-slate-500 font-black uppercase tracking-[0.4em] text-2xl block mb-4">MOMENTO ATUAL</span>
-                             <h1 className="text-[10rem] font-black tracking-tighter leading-[0.8]" style={{color: it?.itemColor || '#FFF'}}>{it?.title || 'Agenda Encerrada'}</h1>
+                             <span className="text-slate-500 font-black uppercase tracking-[0.4em] text-2xl block mb-4">AGORA</span>
+                             <h1 className="text-[10rem] font-black tracking-tighter leading-[0.8]" style={{color: it?.itemColor || '#FFF'}}>{it?.title || 'Encerrado'}</h1>
                          </div>
-                         <div className="text-9xl text-slate-300 font-mono font-bold tracking-tighter">{localTime.toLocaleTimeString('pt-PT', {hour: '2-digit', minute:'2-digit'})}</div>
+                         <div className="text-8xl text-slate-300 font-mono font-bold tracking-tighter">{localTime.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</div>
                      </div>
                      <div className="flex-grow flex items-center justify-center">
                          <div className={`text-[36vw] font-mono font-bold leading-none tracking-tighter ${diff < 0 ? 'text-red-500' : diff < 60 ? 'text-yellow-400' : 'text-white'}`}>
@@ -549,9 +637,78 @@
                          </div>
                      </div>
                      <div className="mt-auto border-t border-white/10 pt-10">
-                         <span className="text-amber-500 font-black uppercase tracking-[0.4em] text-2xl block mb-4">A PREPARAR</span>
+                         <span className="text-amber-500 font-black uppercase tracking-[0.4em] text-2xl block mb-4">A SEGUIR</span>
                          <h2 className="text-8xl font-black text-amber-400 opacity-90 tracking-tighter italic uppercase">{next?.title || '---'}</h2>
                      </div>
+                </div>
+            );
+        };
+
+        const Live3ColumnView = ({ state, formatSecs }) => {
+            const it = state.items[state.liveState.currentItemIndex];
+            const next = state.items[state.liveState.currentItemIndex + 1];
+            const [elapsed, setElapsed] = useState(0);
+
+            useEffect(() => {
+                if (!state.liveState.isRunning || !state.liveState.itemStartTime) { setElapsed(state.liveState.accumulatedTime); return; }
+                const i = setInterval(() => setElapsed(state.liveState.accumulatedTime + (Date.now() - state.liveState.itemStartTime)/1000), 250);
+                return () => clearInterval(i);
+            }, [state.liveState]);
+
+            const diff = (it?.duration * 60) - elapsed;
+            const isOvertime = diff < 0;
+
+            return (
+                <div className="grid grid-cols-12 gap-8 flex-grow">
+                    <div className="col-span-12 lg:col-span-5 bg-slate-900 border border-white/5 p-12 rounded-[3rem] flex flex-col shadow-2xl relative">
+                        <div className="absolute top-0 left-12 right-12 h-1 bg-indigo-600 rounded-full"></div>
+                        <div className="mb-8">
+                            <span className="bg-indigo-600 text-white text-[10px] px-3 py-1 rounded font-black uppercase tracking-widest">Atual</span>
+                            <h2 className="text-6xl font-black text-white mt-6 tracking-tighter leading-[0.9] uppercase">{it?.title || 'FIM'}</h2>
+                            <p className="text-slate-400 mt-4 text-3xl italic">{it?.responsible || '-'}</p>
+                        </div>
+                        <div className="flex-grow flex flex-col items-center justify-center py-10">
+                            <div className={`timer-giant font-mono tracking-tighter ${isOvertime ? 'text-red-500' : diff < 60 ? 'text-yellow-400' : 'text-white'}`}>
+                                {formatSecs(diff)}
+                            </div>
+                        </div>
+                        <div className="bg-black/40 p-6 rounded-3xl border border-white/5">
+                            <p className="team-text-large text-slate-300 italic leading-relaxed line-clamp-3">"{it?.description || 'Nenhuma instrução especial.'}"</p>
+                        </div>
+                    </div>
+
+                    <div className="col-span-12 lg:col-span-4 bg-slate-900/60 border border-white/5 p-10 rounded-[3rem] flex flex-col shadow-xl">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-600 mb-12">Instruções Técnicas</h3>
+                        <div className="space-y-12 flex-grow">
+                            {['lighting', 'projection', 'sound'].map(k => {
+                                const val = it?.technical?.[k];
+                                const color = it?.techColors?.[k];
+                                if(!val || val === '-') return null;
+                                return (
+                                    <div key={k} className="flex gap-6 items-start">
+                                        <div className="w-16 h-16 rounded-2xl border-4 border-white/10 shrink-0 shadow-lg" style={{backgroundColor: color || '#1e293b'}}></div>
+                                        <div>
+                                            <span className="text-[10px] font-black uppercase text-slate-500 block mb-1 tracking-widest">{k === 'lighting' ? 'Luz' : k === 'projection' ? 'Projeção' : 'Som'}</span>
+                                            <p className="text-4xl font-black text-white leading-tight">{val}</p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    <div className="col-span-12 lg:col-span-3 bg-white/5 border border-white/5 p-10 rounded-[3rem] flex flex-col">
+                         <span className="text-yellow-500 font-black uppercase text-[10px] tracking-[0.3em] block mb-10">Próximo</span>
+                         {next ? (
+                             <div className="space-y-10 flex-grow flex flex-col">
+                                 <h3 className="text-5xl font-black text-white leading-[0.9] tracking-tighter uppercase">{next.title}</h3>
+                                 <div className="pt-10 border-t border-white/10 space-y-6">
+                                     <p className="text-slate-400 text-xl font-bold uppercase tracking-widest">{next.responsible}</p>
+                                     <p className="text-slate-500 text-lg leading-snug italic">"{next.description || 'Sem notas.'}"</p>
+                                 </div>
+                             </div>
+                         ) : <div className="flex-grow flex items-center justify-center font-black text-slate-800 uppercase tracking-widest italic text-2xl">Finalizado</div>}
+                    </div>
                 </div>
             );
         };
@@ -563,26 +720,26 @@
                 state.items.forEach(it => { if(it.completed) b += (it.duration - (it.actualDuration/60 || it.duration)); });
                 const rem = state.items.slice(state.liveState.currentItemIndex).reduce((acc, i) => acc + (i.duration || 0), 0);
                 const eTime = new Date(Date.now() + rem * 60000);
-                return { balance: b, end: eTime.toLocaleTimeString('pt-PT', {hour: '2-digit', minute:'2-digit'}) };
+                return { balance: b, end: eTime.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}) };
             }, [state.items, state.liveState.currentItemIndex]);
 
             return (
                 <div className={`${isReadOnly ? 'bg-white/5 border-white/10 shadow-2xl' : 'bg-slate-900 border-white/5'} border p-6 rounded-[2.5rem] shrink-0`}>
                     <div className="flex justify-between items-center mb-6">
-                        <h3 className="font-black text-[10px] uppercase tracking-[0.3em] text-slate-500">Fluxo Litúrgico em Tempo Real</h3>
+                        <h3 className="font-black text-[10px] uppercase tracking-[0.3em] text-slate-500">Fluxo Litúrgico</h3>
                         <div className="flex gap-6">
-                            <span className={`text-[10px] font-black px-5 py-2 rounded-full uppercase tracking-widest ${stats.balance >= 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>Balanço: {Math.round(stats.balance)}m</span>
-                            <span className="text-[10px] font-black px-5 py-2 rounded-full bg-indigo-500/20 text-indigo-400 uppercase tracking-[0.2em] border border-indigo-500/20">Prev. Fim: {stats.end}</span>
+                            <span className={`text-[10px] font-black px-5 py-2 rounded-full uppercase ${stats.balance >= 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>Balanço: {Math.round(stats.balance)}m</span>
+                            <span className="text-[10px] font-black px-5 py-2 rounded-full bg-indigo-500/20 text-indigo-400 uppercase tracking-widest text-center text-white">Previsão Fim: {stats.end}</span>
                         </div>
                     </div>
                     <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
                         {state.items.map((it, idx) => (
-                            <div key={it.id} className={`flex-shrink-0 w-56 p-5 rounded-[1.8rem] border-2 transition-all duration-700 ${idx === state.liveState.currentItemIndex ? 'border-indigo-600 bg-indigo-600/20 scale-105 shadow-xl' : 'border-transparent opacity-20'}`}>
+                            <div key={it.id} className={`flex-shrink-0 w-56 p-5 rounded-[1.8rem] border-2 transition-all duration-700 ${idx === state.liveState.currentItemIndex ? 'border-indigo-600 bg-indigo-600/10 scale-105 shadow-xl' : 'border-transparent opacity-20'}`}>
                                 <div className="flex justify-between items-center mb-2 text-[10px] font-black font-mono">
                                     <span className="text-indigo-400">{it.startTime}</span>
                                     {it.completed && <Icon name="check" size={16} className="text-emerald-500" />}
                                 </div>
-                                <h4 className="font-black text-sm truncate uppercase tracking-tight text-white">{it.title}</h4>
+                                <h4 className="font-black text-sm truncate uppercase tracking-tighter text-white">{it.title}</h4>
                                 <div className="text-[9px] text-slate-500 font-bold uppercase mt-2 tracking-widest">{it.duration} min</div>
                             </div>
                         ))}
